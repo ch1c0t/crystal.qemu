@@ -1,0 +1,9 @@
+---
+name: qemu
+version: 0.0.0
+authors:
+- Anatoly Chernov <chertoly@gmail.com>
+targets:
+  qemu:
+    main: src/bin/qemu.cr
+crystal: ">= 1.15.1"

@@ -1,0 +1,1 @@
+puts "qemu is made with Crystal."
