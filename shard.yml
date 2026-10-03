@@ -7,3 +7,6 @@ targets:
   qemu:
     main: src/bin/qemu.cr
 crystal: ">= 1.15.1"
+dependencies:
+  xephyr_context:
+    github: ch1c0t/xephyr.context
