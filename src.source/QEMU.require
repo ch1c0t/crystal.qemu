@@ -2,4 +2,5 @@ process
 socket
 file_utils
 json
+mutex
 xephyr_context
