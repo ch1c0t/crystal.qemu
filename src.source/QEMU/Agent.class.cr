@@ -24,7 +24,7 @@ class Agent
   end
 
   def wait_for_text(text : String, timeout : Time::Span = 30.seconds) : Bool
-    deadline = Time.instant + timeout
+    deadline = Time.monotonic + timeout
 
     loop do
       return true if @text_mutex.synchronize { @latest_text.includes?(text) }
