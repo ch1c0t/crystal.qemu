@@ -59,6 +59,8 @@ module QEMU
     def running? : Bool
       !@process.terminated?
     end
+
+    at_exit { stop }
   end
 
   class VM
