@@ -47,6 +47,9 @@ module QEMU
         output: Process::Redirect::Inherit,
         error: Process::Redirect::Inherit
       )
+    
+      at_exit { stop }
+    
     end
     
     def stop : Nil
@@ -58,7 +61,6 @@ module QEMU
     
     def running? : Bool
       !@process.terminated?
-      at_exit { stop }
     end
   end
 
