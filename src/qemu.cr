@@ -4,6 +4,7 @@ require "file_utils"
 require "json"
 require "mutex"
 require "xephyr_context"
+require "global-amqp_channel"
 
 module QEMU
 

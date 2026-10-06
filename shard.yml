@@ -10,3 +10,5 @@ crystal: ">= 1.15.1"
 dependencies:
   xephyr_context:
     github: ch1c0t/xephyr.context
+  global-amqp_channel:
+    github: ch1c0t/crystal.global-amqp_channel

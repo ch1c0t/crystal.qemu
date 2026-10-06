@@ -4,3 +4,4 @@ file_utils
 json
 mutex
 xephyr_context
+global-amqp_channel
