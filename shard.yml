@@ -4,8 +4,8 @@ version: 0.0.0
 authors:
 - Anatoly Chernov <chertoly@gmail.com>
 targets:
-  qemu:
-    main: src/bin/qemu.cr
+  grml.agent:
+    main: src/bin/grml.agent.cr
 crystal: ">= 1.15.1"
 dependencies:
   xephyr_context:
