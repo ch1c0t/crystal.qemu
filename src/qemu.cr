@@ -50,14 +50,14 @@ module QEMU
     end
     
     def stop : Nil
-      return unless @process.running?
+      return if @process.terminated?
     
       @process.terminate
       @process.wait
     end
     
     def running? : Bool
-      @process.running?
+      !@process.terminated?
     end
   end
 
