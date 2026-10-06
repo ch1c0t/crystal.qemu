@@ -7,6 +7,9 @@ def initialize(command : String, env : Hash(String, String))
     output: Process::Redirect::Inherit,
     error: Process::Redirect::Inherit
   )
+
+  at_exit { stop }
+
 end
 
 def stop : Nil
