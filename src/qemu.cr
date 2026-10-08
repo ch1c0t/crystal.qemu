@@ -30,7 +30,7 @@ module QEMU
     def wait_for_text(text : String, timeout : Time::Span = 30.seconds) : XephyrContext::State
       @context.wait_until(text, timeout)
     rescue error : RuntimeError
-      raise unless error.message == "Timed out waiting for #{text.inspect}"
+      raise error unless error.message == "Timed out waiting for #{text.inspect}"
       raise TimeoutError.new(error.message || "Timed out waiting for text")
     end
     
