@@ -24,13 +24,17 @@ rescue error : RuntimeError
 end
 
 def stop : Bool
+  result = false
+
   begin
     @context.stop
   ensure
     begin
       @context_process.stop
     ensure
-      @vm.stop
+      result = @vm.stop
     end
   end
+
+  result
 end
