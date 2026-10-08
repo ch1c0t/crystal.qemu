@@ -11,7 +11,7 @@ module QEMU
   class Agent
     class TimeoutError < Exception
     end
-
+    
     getter vm : VM
     getter context : XephyrContext
     getter context_process : ProcessSupervisor
@@ -27,7 +27,7 @@ module QEMU
       @context = XephyrContext.new(display, Global.amqp_channel)
     end
     
-    def wait_for_text(text : String, timeout : Time::Span = 30.seconds) : XephyrContext::State
+    def wait_for_text(text : String, timeout : Time::Span = 60.seconds) : XephyrContext::State
       @context.wait_until(text, timeout)
     rescue error : RuntimeError
       raise error unless error.message == "Timed out waiting for #{text.inspect}"
