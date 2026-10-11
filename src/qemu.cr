@@ -15,13 +15,7 @@ module QEMU
         timeout : Time::Span = 60.seconds,
         region : Symbol = :full_screen
       ) : XephyrContext::State
-        screen_region = case region
-                        when :full_screen  then XephyrContext::ScreenRegion.full_screen
-                        when :top_fourth   then XephyrContext::ScreenRegion.top_fourth
-                        when :bottom_tenth then XephyrContext::ScreenRegion.bottom_tenth
-                        else
-                          raise ArgumentError.new("Unknown screen region: #{region.inspect}")
-                        end
+        screen_region = XephyrContext::ScreenRegion.from_symbol(region)
       
         wait_for_text(text, timeout, screen_region)
       end
