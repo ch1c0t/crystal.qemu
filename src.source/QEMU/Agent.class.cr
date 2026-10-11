@@ -18,10 +18,18 @@ end
 
 include WaitForText
 
-def wait_for_text(
-  text : String,
-  timeout : Time::Span = 60.seconds,
-  region : Symbol = :full_screen
-) : XephyrContext::State
-  wait_for_text(text, timeout, XephyrContext::ScreenRegion.from_symbol(region))
+def stop : Bool
+  result = false
+
+  begin
+    @context.stop
+  ensure
+    begin
+      @context_process.stop
+    ensure
+      result = @vm.stop
+    end
+  end
+
+  result
 end
