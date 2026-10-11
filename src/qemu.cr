@@ -50,16 +50,16 @@ module QEMU
     
     include WaitForText
     
-    def stop : Bool
+    def terminate : Bool
       result = false
     
       begin
         @context.stop
       ensure
         begin
-          @context_process.stop
+          @context_process.terminate
         ensure
-          result = @vm.stop
+          result = @vm.terminate
         end
       end
     
@@ -78,11 +78,11 @@ module QEMU
         error: Process::Redirect::Inherit
       )
     
-      at_exit { stop }
+      at_exit { terminate }
     
     end
     
-    def stop : Nil
+    def terminate : Nil
       return if @process.terminated?
     
       @process.terminate
@@ -173,8 +173,8 @@ module QEMU
       end
     end
   
-    module Stop
-      def stop : Bool
+    module Terminate
+      def terminate : Bool
         if target_display = @display
           result = Process.run("xephyr-kill", [target_display], shell: false)
           File.delete(@monitor_path) if File.exists?(@monitor_path)
@@ -217,7 +217,7 @@ module QEMU
     end
     
     include Start
-    include Stop
+    include Terminate
     include ExecuteQMP
     
     def running? : Bool
