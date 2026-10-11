@@ -24,7 +24,7 @@ def initialize(
 end
 
 include Start
-include Stop
+include Terminate
 include ExecuteQMP
 
 def running? : Bool
