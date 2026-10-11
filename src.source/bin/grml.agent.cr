@@ -6,7 +6,7 @@ vm = QEMU::VM.new(
 agent = QEMU::Agent.new(vm)
 
 begin
-  agent.wait_for_text("Press a key", region: XephyrContext::ScreenRegion.bottom_tenth)
+  agent.wait_for_text("Press a key", region: :bottom_tenth)
   puts "GRML Agent: Press a key detected"
 rescue QEMU::Agent::TimeoutError
   puts "GRML Agent: timed out waiting for Press a key"
