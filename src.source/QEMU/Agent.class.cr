@@ -29,7 +29,15 @@ def wait_for_text(
                     raise ArgumentError.new("Unknown screen region: #{region.inspect}")
                   end
 
-  @context.wait_until(text, timeout, screen_region)
+  wait_for_text(text, timeout, screen_region)
+end
+
+def wait_for_text(
+  text : String,
+  timeout : Time::Span = 60.seconds,
+  region : XephyrContext::ScreenRegion
+) : XephyrContext::State
+  @context.wait_until(text, timeout, region)
 rescue error : RuntimeError
   raise error unless error.message == "Timed out waiting for #{text.inspect}"
   raise TimeoutError.new(error.message || "Timed out waiting for text")
