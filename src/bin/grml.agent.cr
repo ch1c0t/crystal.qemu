@@ -22,6 +22,9 @@ vm = QEMU::VM.new(
 agent = QEMU::Agent.new(vm)
 
 begin
+  agent.wait_for_text("Press ENTER to boot", region: :bottom_tenth)
+  puts "emit Enter"
+
   agent.wait_for_text("Press a key", region: :bottom_tenth)
   puts "GRML Agent: Press a key detected"
 rescue QEMU::Agent::TimeoutError
