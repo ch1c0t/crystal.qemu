@@ -8,11 +8,11 @@ def initialize(command : String, env : Hash(String, String))
     error: Process::Redirect::Inherit
   )
 
-  at_exit { stop }
+  at_exit { terminate }
 
 end
 
-def stop : Nil
+def terminate : Nil
   return if @process.terminated?
 
   @process.terminate
