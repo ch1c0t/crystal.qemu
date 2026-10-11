@@ -17,3 +17,11 @@ def initialize(@vm : VM = VM.new)
 end
 
 include WaitForText
+
+def wait_for_text(
+  text : String,
+  timeout : Time::Span = 60.seconds,
+  region : Symbol = :full_screen
+) : XephyrContext::State
+  wait_for_text(text, timeout, XephyrContext::ScreenRegion.from_symbol(region))
+end
