@@ -30,6 +30,6 @@ begin
 rescue QEMU::Agent::TimeoutError
   puts "GRML Agent: timed out waiting for Press a key"
 ensure
-  puts "before agent.stop"
-  agent.stop
+  puts "before agent.terminate"
+  agent.terminate
 end
