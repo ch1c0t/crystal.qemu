@@ -18,16 +18,16 @@ end
 
 include WaitForText
 
-def stop : Bool
+def terminate : Bool
   result = false
 
   begin
     @context.stop
   ensure
     begin
-      @context_process.stop
+      @context_process.terminate
     ensure
-      result = @vm.stop
+      result = @vm.terminate
     end
   end
 
