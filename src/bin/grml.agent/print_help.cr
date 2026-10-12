@@ -1,5 +1,13 @@
 HELP_MESSAGE = <<-S
-A help message for grml.agent.
+grml.agent boots GRML and provides an interactive command line.
+
+Usage:
+  grml.agent boot
+  grml.agent --help
+  grml.agent --version
+
+The boot command starts the GRML VM, advances through its boot prompts,
+waits for the root@grml shell prompt, and keeps the VM running until Ctrl-C.
 S
 
 def print_help
