@@ -1,5 +1,10 @@
 require "../qemu"
 
+unless ARGV == ["boot"]
+  STDERR.puts "Usage: grml.agent boot"
+  exit 1
+end
+
 vm = QEMU::VM.new(
   iso_path: "#{ENV["HOME"]}/Downloads/ISOs/grml-full-2026.09-amd64.iso"
 )
@@ -10,10 +15,12 @@ begin
   vm.send_key("ret")
 
   agent.wait_for_text("Press a key", region: :bottom_tenth)
-  puts "GRML Agent: Press a key detected"
-rescue QEMU::Agent::TimeoutError
-  puts "GRML Agent: timed out waiting for Press a key"
+  vm.send_key("ret")
+
+  agent.wait_for_text("root@grml", 180.seconds, :bottom_tenth)
+  puts "GRML command line ready. Press Ctrl-C to stop the VM."
+
+  loop { sleep 1.second }
 ensure
-  puts "before agent.terminate"
   agent.terminate
 end
