@@ -43,7 +43,10 @@ module QEMU
     
       @context_process = ProcessSupervisor.new(
         "xephyr.context",
-        {"DISPLAY_TARGET" => display}
+        {
+          "DISPLAY_TARGET" => display,
+          "XEPHYR_LOG_LEVEL" => ENV.fetch("XEPHYR_LOG_LEVEL", "INFO"),
+        }
       )
       @context = XephyrContext.new(display, Global.amqp_channel)
     end
