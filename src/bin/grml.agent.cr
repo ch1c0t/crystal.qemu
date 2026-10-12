@@ -1,3 +1,19 @@
+require "./grml.agent/*"
+
+VERSION = "0.0.0"
+
+case ARGV.size
+when 1
+  case ARGV[0]
+  when "-v", "version", "--version"
+    puts VERSION
+    exit
+  when "-h", "help", "--help"
+    print_help
+    exit
+  end
+end
+
 require "../qemu"
 
 unless ARGV == ["boot"]
@@ -10,9 +26,8 @@ vm = QEMU::VM.new(
 )
 agent = QEMU::Agent.new(vm)
 
-interrupted = false
-Signal::INT.trap { interrupted = true }
-Signal::TERM.trap { interrupted = true }
+Signal::INT.trap { agent.terminate && exit }
+Signal::TERM.trap { agent.terminate && exit }
 
 begin
   agent.wait_for_text("Press ENTER to boot", region: :bottom_tenth)
@@ -24,11 +39,7 @@ begin
   agent.wait_for_text("root@grml", 180.seconds, :bottom_tenth)
   puts "GRML command line ready. Press Ctrl-C to stop the VM."
 
-  while !interrupted
-    sleep 100.milliseconds
-  end
+  sleep
 ensure
-  Signal::INT.reset
-  Signal::TERM.reset
   agent.terminate
 end
