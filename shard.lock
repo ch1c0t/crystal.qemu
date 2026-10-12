@@ -22,5 +22,5 @@ shards:
 
   xephyr_context:
     git: https://github.com/ch1c0t/xephyr.context.git
-    version: 0.0.0+git.commit.d56cc14a12a8efb75ffa2ac63f00dd2b48ccd70f
+    version: 0.0.0+git.commit.2fae20ba42dd487e91e826e303f1263486de121f
 
