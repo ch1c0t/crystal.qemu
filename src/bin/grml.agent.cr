@@ -23,7 +23,7 @@ agent = QEMU::Agent.new(vm)
 
 begin
   agent.wait_for_text("Press ENTER to boot", region: :bottom_tenth)
-  puts "emit Enter"
+  vm.send_key("ret")
 
   agent.wait_for_text("Press a key", region: :bottom_tenth)
   puts "GRML Agent: Press a key detected"
