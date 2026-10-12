@@ -2,16 +2,15 @@ require "./grml.agent/*"
 
 VERSION = "0.0.0"
 
-case ARGV.size
-when 1
-  case ARGV[0]
-  when "-v", "version", "--version"
-    puts VERSION
-    exit
-  when "-h", "help", "--help"
-    print_help
-    exit
-  end
+if ARGV == ["-v"] || ARGV == ["version"] || ARGV == ["--version"]
+  puts VERSION
+  exit
+elsif ARGV == ["-h"] || ARGV == ["help"] || ARGV == ["--help"]
+  print_help
+  exit
+elsif ARGV != ["boot"]
+  print_help
+  exit 1
 end
 
 require "../qemu"
@@ -26,10 +25,12 @@ begin
   vm.send_key("ret")
 
   agent.wait_for_text("Press a key", region: :bottom_tenth)
-  puts "GRML Agent: Press a key detected"
-rescue QEMU::Agent::TimeoutError
-  puts "GRML Agent: timed out waiting for Press a key"
+  vm.send_key("ret")
+
+  agent.wait_for_text("root@grml", 180.seconds, :bottom_tenth)
+  puts "GRML command line ready. Press Ctrl-C to stop the VM."
+
+  loop { sleep 1.second }
 ensure
-  puts "before agent.terminate"
   agent.terminate
 end
