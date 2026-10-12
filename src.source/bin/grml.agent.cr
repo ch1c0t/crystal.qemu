@@ -1,5 +1,4 @@
-require "../Logger"
-
+require "../logger"
 require "../qemu"
 
 unless ARGV == ["boot"]

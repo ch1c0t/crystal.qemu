@@ -15,7 +15,6 @@ when 1
 end
 
 require "../logger"
-
 require "../qemu"
 
 unless ARGV == ["boot"]

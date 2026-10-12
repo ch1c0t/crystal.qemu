@@ -1,5 +1,3 @@
-require "log"
-
 process_name = PROGRAM_NAME.split('/').last
 
 log_level = case ENV.fetch("XEPHYR_LOG_LEVEL", "INFO").upcase
