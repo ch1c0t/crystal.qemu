@@ -14,6 +14,7 @@ when 1
   end
 end
 
+require "../logger"
 require "../qemu"
 
 vm = QEMU::VM.new(
