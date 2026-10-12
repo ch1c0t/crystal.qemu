@@ -130,11 +130,11 @@ module QEMU
           raise "QMP Communication Failure: #{e.message}"
         end
       end
+      
       def send_key(key : String) : JSON::Any
         arguments = JSON.parse(%({"keys":[{"type":"qcode","data":#{key.to_json}}]})).as_h
         execute_qmp("send-key", arguments)
       end
-
     end
   
     module Start
