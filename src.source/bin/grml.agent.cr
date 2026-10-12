@@ -24,7 +24,9 @@ begin
   agent.wait_for_text("root@grml", 180.seconds, :bottom_tenth)
   puts "GRML command line ready. Press Ctrl-C to stop the VM."
 
-  sleep 100.milliseconds until interrupted
+  while !interrupted
+    sleep 100.milliseconds
+  end
 ensure
   Signal::INT.reset
   Signal::TERM.reset
