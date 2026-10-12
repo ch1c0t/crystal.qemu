@@ -1,3 +1,9 @@
-grml.agent is a CLI to start a GRML VM and something inside of it.
+grml.agent boots GRML and provides an interactive command line.
 
-grml.agent [COMMAND] [*COMMAND_PARAMS]
+Usage:
+  grml.agent boot
+  grml.agent --help
+  grml.agent --version
+
+The boot command starts the GRML VM, advances through its boot prompts,
+waits for the root@grml shell prompt, and keeps the VM running until Ctrl-C.
