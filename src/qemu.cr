@@ -113,9 +113,9 @@ module QEMU
             socket.puts(handshake_cmd)
             socket.gets # ACK Response
       
-            payload = {"execute" => execute_command}
+            payload = JSON::Any.new({"execute" => JSON::Any.new(execute_command)}).as_h
             if args = arguments
-              payload["arguments"] = args.transform_values { |v| v.as(JSON::Any) }
+              payload["arguments"] = JSON::Any.new(args)
             end
       
             socket.puts(payload.to_json)
