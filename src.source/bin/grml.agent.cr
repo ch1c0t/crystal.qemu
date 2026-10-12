@@ -38,6 +38,9 @@ begin
   sleep
 ensure
   LOG.info { "Terminating GRML agent" }
-  agent.terminate
-  LOG.info { "GRML agent terminated" }
+  if agent.terminate
+    LOG.info { "GRML agent terminated" }
+  else
+    LOG.error { "GRML agent reported a shutdown failure" }
+  end
 end
