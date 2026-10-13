@@ -140,7 +140,7 @@ module GRML
         exit 1
       end
 
-      class WithAgent
+      module WithAgent
         def run : Nil
           agent = GRML::Agent.new
 
@@ -154,18 +154,20 @@ module GRML
             agent.terminate
           end
         end
-
-        protected abstract def perform(agent : GRML::Agent) : Nil
       end
 
-      class Boot < WithAgent
+      class Boot
+        include WithAgent
+
         protected def perform(agent : GRML::Agent) : Nil
           Log.info { "GRML agent is running. Press Ctrl-C to terminate the VM." }
           sleep
         end
       end
 
-      class CreateAlpineImage < WithAgent
+      class CreateAlpineImage
+        include WithAgent
+
         def initialize(@iso_path : String? = nil)
         end
 
