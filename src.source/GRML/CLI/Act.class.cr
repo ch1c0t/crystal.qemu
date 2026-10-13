@@ -1,36 +1,20 @@
 getter arguments : Array(String)
 
-def initialize(@arguments : Array(String) = ARGV.dup)
+def initialize(@arguments : Array(String) = [] of String)
 end
 
 def run : Nil
-  command, iso_path = parse_arguments
-  Log.info { "Starting GRML agent act: #{command}" }
+  agent = GRML::Agent.new
 
-  case command
-  when "boot"
-    Boot.new.run
-  when "create_alpine_image"
-    CreateAlpineImage.new(iso_path).run
+  Signal::INT.trap { agent.terminate && exit }
+  Signal::TERM.trap { agent.terminate && exit }
+
+  begin
+    agent.boot
+    perform(agent)
+  ensure
+    agent.terminate
   end
 end
 
-private def parse_arguments : Tuple(String, String?)
-  args = @arguments.dup
-  command = args.shift?
-  unless command == "boot" || command == "create_alpine_image"
-    usage_error
-  end
-
-  iso_path = args.shift?
-  if (command == "boot" && iso_path) || !args.empty?
-    usage_error
-  end
-
-  {command.not_nil!, iso_path}
-end
-
-private def usage_error : NoReturn
-  STDERR.puts "Usage: grml.agent <boot|create_alpine_image> [alpine_iso_path]"
-  exit 1
-end
+abstract def perform(agent : GRML::Agent) : Nil
