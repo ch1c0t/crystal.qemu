@@ -13,7 +13,7 @@ def initialize(
   @cpus = 2, 
   @iso_path = "alpine.iso", 
   @shared_path = "#{ENV["HOME"]}/shared/", 
-  @monitor_path = "/tmp/qmp-guest-#{Random.rand(100000)}.sock",
+  @monitor_path = "/tmp/qmp-guest-#{Process.pid}-#{Random.rand(100000)}.sock",
   auto_start : Bool = true
 )
   if auto_start
