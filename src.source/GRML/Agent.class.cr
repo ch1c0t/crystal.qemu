@@ -10,5 +10,6 @@ def initialize(
 end
 
 include Boot
+include VerifySharedDirectory
 include CreateAlpineImage
 include Terminate

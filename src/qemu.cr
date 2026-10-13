@@ -2,11 +2,25 @@ require "process"
 require "socket"
 require "file_utils"
 require "json"
+require "base64"
 require "mutex"
 require "xephyr_context"
 require "global-amqp_channel"
 
 module QEMU
+
+  class CommandResult
+    getter exit_code : Int32
+    getter stdout : String
+    getter stderr : String
+    
+    def initialize(@exit_code : Int32, @stdout : String, @stderr : String)
+    end
+    
+    def success? : Bool
+      @exit_code == 0
+    end
+  end
 
   class Agent
     module WaitForText
@@ -30,6 +44,57 @@ module QEMU
       end
     end
   
+    module Execute
+      def execute(command : String, timeout : Time::Span = 30.seconds) : CommandResult
+        arguments = JSON.parse({
+          "path" => "/bin/sh",
+          "arg" => ["-lc", command],
+          "capture-output" => true,
+        }.to_json).as_h
+        response = guest_agent_request("guest-exec", arguments)
+        pid = response["pid"].as_i
+
+        started_at = Time.instant
+        loop do
+          status_arguments = JSON.parse({"pid" => pid}.to_json).as_h
+          status = guest_agent_request("guest-exec-status", status_arguments)
+
+          if status["exited"].as_bool
+            return CommandResult.new(
+              status["exitcode"].as_i,
+              decode_output(status, "out-data"),
+              decode_output(status, "err-data")
+            )
+          end
+
+          raise TimeoutError.new("Guest command timed out after #{timeout}") if Time.instant - started_at >= timeout
+          sleep 50.milliseconds
+        end
+      end
+
+      private def guest_agent_request(
+        command : String,
+        arguments : Hash(String, JSON::Any)? = nil
+      ) : JSON::Any
+        payload = {"execute" => JSON::Any.new(command)}
+        payload["arguments"] = JSON::Any.new(arguments) if arguments
+
+        UNIXSocket.open(@vm.guest_agent_path) do |socket|
+          socket.puts(payload.to_json)
+          response = JSON.parse(socket.gets || raise "Empty response from QEMU guest agent")
+          raise "QEMU guest agent error: #{response["error"]}" if response["error"]?
+          response["return"]? || JSON::Any.new(nil)
+        end
+      rescue error : Exception
+        raise "QEMU guest agent request failed: #{error.message}"
+      end
+
+      private def decode_output(status : JSON::Any, key : String) : String
+        encoded = status[key]?.try(&.as_s) || ""
+        Base64.decode_string(encoded)
+      end
+    end
+
     class TimeoutError < Exception
     end
     
@@ -52,6 +117,7 @@ module QEMU
     end
     
     include WaitForText
+    include Execute
     
     def terminate : Bool
       result = false
@@ -156,6 +222,9 @@ module QEMU
           "-vga", "virtio",
           "-fsdev", "local,security_model=mapped,id=shared0,path=#{@shared_path}",
           "-device", "virtio-9p-pci,fsdev=shared0,mount_tag=shared0",
+        "-chardev", "socket,path=#{@guest_agent_path},server=on,wait=off,id=qga0",
+        "-device", "virtio-serial-pci,id=virtio-serial-qga",
+        "-device", "virtserialport,chardev=qga0,name=org.qemu.guest_agent.0",
           "-cdrom", @iso_path,
           "-qmp", "unix:#{@monitor_path},server,nowait"
         ])
@@ -167,6 +236,7 @@ module QEMU
         return false if @display
       
         File.delete(@monitor_path) if File.exists?(@monitor_path)
+        File.delete(@guest_agent_path) if File.exists?(@guest_agent_path)
       
         qemu_cmd = build_qemu_command
         stdout_buffer = IO::Memory.new
@@ -186,6 +256,7 @@ module QEMU
         if target_display = @display
           result = Process.run("xephyr-kill", [target_display], shell: false)
           File.delete(@monitor_path) if File.exists?(@monitor_path)
+          File.delete(@guest_agent_path) if File.exists?(@guest_agent_path)
       
           if result.success?
             @display = nil
@@ -205,6 +276,7 @@ module QEMU
     property iso_path : String
     property shared_path : String
     property monitor_path : String 
+    property guest_agent_path : String
     
     getter display : String? = nil
     
@@ -215,6 +287,7 @@ module QEMU
       @iso_path = "alpine.iso", 
       @shared_path = "#{ENV["HOME"]}/shared/", 
       @monitor_path = "/tmp/qmp-guest-#{Process.pid}-#{Random.rand(100000)}.sock",
+      @guest_agent_path = "/tmp/qga-guest-#{Process.pid}-#{Random.rand(100000)}.sock",
       auto_start : Bool = true
     )
       if auto_start
