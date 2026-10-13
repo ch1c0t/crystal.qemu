@@ -1,5 +1,7 @@
 module GRML
   class Agent
+    LOG = Log.for("grml.agent")
+
     getter vm : QEMU::VM
     getter interaction : QEMU::Agent
 
