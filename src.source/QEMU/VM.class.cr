@@ -4,6 +4,7 @@ property cpus : Int32
 property iso_path : String
 property shared_path : String
 property monitor_path : String 
+property guest_agent_path : String
 
 getter display : String? = nil
 
@@ -14,6 +15,7 @@ def initialize(
   @iso_path = "alpine.iso", 
   @shared_path = "#{ENV["HOME"]}/shared/", 
   @monitor_path = "/tmp/qmp-guest-#{Process.pid}-#{Random.rand(100000)}.sock",
+  @guest_agent_path = "/tmp/qga-guest-#{Process.pid}-#{Random.rand(100000)}.sock",
   auto_start : Bool = true
 )
   if auto_start
