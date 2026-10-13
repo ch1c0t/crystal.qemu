@@ -23,7 +23,7 @@ def run : Nil
   end
 end
 
-private def parse_arguments : Tuple(String, String?)
+private def parse_arguments : Tuple(String?, String?)
   args = @arguments.dup
   command = args.shift?
   unless command == "boot" || command == "create_alpine_image"
