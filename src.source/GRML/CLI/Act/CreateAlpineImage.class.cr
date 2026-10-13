@@ -1,6 +1,10 @@
-include WithAgent
+def initialize(arguments : Array(String) = [] of String)
+  if arguments.size > 1
+    STDERR.puts "Usage: grml.agent create_alpine_image [alpine_iso_path]"
+    exit 1
+  end
 
-def initialize(@iso_path : String? = nil)
+  @iso_path = arguments.first?
 end
 
 protected def perform(agent : GRML::Agent) : Nil
