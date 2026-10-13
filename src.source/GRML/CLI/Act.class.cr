@@ -1,6 +1,10 @@
 getter arguments : Array(String)
 
 def initialize(@arguments : Array(String) = [] of String)
+  validate_arguments
+end
+
+def validate_arguments
 end
 
 def run : Nil
@@ -17,4 +21,5 @@ def run : Nil
   end
 end
 
-abstract def perform(agent : GRML::Agent) : Nil
+protected def perform(agent : GRML::Agent) : Nil
+end

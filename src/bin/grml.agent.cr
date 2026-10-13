@@ -17,4 +17,4 @@ end
 require "../logger"
 require "../grml"
 
-GRML::CLI::Act.new.run
+GRML::CLI.run

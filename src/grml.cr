@@ -101,11 +101,10 @@ module GRML
   end
 
   module CLI
-
     def self.run(arguments : Array(String) = ARGV.dup) : Nil
       args = arguments.dup
       command = args.shift?
-
+    
       case command
       when "boot"
         Act::Boot.new(args).run
@@ -116,19 +115,23 @@ module GRML
         exit 1
       end
     end
-
+  
     class Act
       getter arguments : Array(String)
-
+      
       def initialize(@arguments : Array(String) = [] of String)
+        validate_arguments
       end
-
+      
+      def validate_arguments
+      end
+      
       def run : Nil
         agent = GRML::Agent.new
-
+      
         Signal::INT.trap { agent.terminate && exit }
         Signal::TERM.trap { agent.terminate && exit }
-
+      
         begin
           agent.boot
           perform(agent)
@@ -136,36 +139,39 @@ module GRML
           agent.terminate
         end
       end
-
-      abstract def perform(agent : GRML::Agent) : Nil
-    end
-
-    class Act::Boot < Act
-      def initialize(arguments : Array(String) = [] of String)
-        unless arguments.empty?
-          STDERR.puts "Usage: grml.agent boot"
-          exit 1
+      
+      protected def perform(agent : GRML::Agent) : Nil
+      end
+    
+      class Boot < Act
+        def validate_arguments
+          unless @arguments.empty?
+            STDERR.puts "Usage: grml.agent boot"
+            exit 1
+          end
+        end
+        
+        protected def perform(agent : GRML::Agent) : Nil
+          Log.info { "GRML agent is running. Press Ctrl-C to terminate the VM." }
+          sleep
         end
       end
-
-      protected def perform(agent : GRML::Agent) : Nil
-        Log.info { "GRML agent is running. Press Ctrl-C to terminate the VM." }
-        sleep
-      end
-    end
-
-    class Act::CreateAlpineImage < Act
-      def initialize(arguments : Array(String) = [] of String)
-        if arguments.size > 1
-          STDERR.puts "Usage: grml.agent create_alpine_image [alpine_iso_path]"
-          exit 1
+    
+      class CreateAlpineImage < Act
+        @iso_path : String?
+        
+        def validate_arguments
+          if @arguments.size > 1
+            STDERR.puts "Usage: grml.agent create_alpine_image [alpine_iso_path]"
+            exit 1
+          end
+        
+          @iso_path = @arguments.first?
         end
-
-        @iso_path = arguments.first?
-      end
-
-      protected def perform(agent : GRML::Agent) : Nil
-        agent.create_alpine_image(@iso_path)
+        
+        protected def perform(agent : GRML::Agent) : Nil
+          agent.create_alpine_image(@iso_path)
+        end
       end
     end
   end

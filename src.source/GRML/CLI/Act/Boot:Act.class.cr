@@ -1,5 +1,5 @@
-def initialize(arguments : Array(String) = [] of String)
-  unless arguments.empty?
+def validate_arguments
+  unless @arguments.empty?
     STDERR.puts "Usage: grml.agent boot"
     exit 1
   end
