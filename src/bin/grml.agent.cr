@@ -24,8 +24,8 @@ unless command == "boot" || command == "create_alpine_image"
 end
 
 alpine_iso_path = ARGV.shift?
-if (command == "boot" && (alpine_iso_path || !ARGV.empty?)) ||
-   (command == "create_alpine_image" && !ARGV.empty?)
+if command == "boot" && (alpine_iso_path || !ARGV.empty?) ||
+   command == "create_alpine_image" && !ARGV.empty?
   STDERR.puts "Usage: grml.agent <boot|create_alpine_image> [alpine_iso_path]"
   exit 1
 end
