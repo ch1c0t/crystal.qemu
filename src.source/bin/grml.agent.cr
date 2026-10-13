@@ -1,14 +1,12 @@
 require "../logger"
-require "../qemu"
+require "../grml"
 
 unless ARGV == ["boot"]
   STDERR.puts "Usage: grml.agent boot"
   exit 1
 end
 
-LOG = Log.for("grml.agent")
-
-LOG.info { "Starting GRML agent" }
+Log.info { "Starting GRML agent" }
 agent = GRML::Agent.new
 
 Signal::INT.trap { agent.terminate && exit }
