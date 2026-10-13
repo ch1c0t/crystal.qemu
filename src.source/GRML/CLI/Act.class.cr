@@ -5,25 +5,17 @@ end
 
 def run : Nil
   command, iso_path = parse_arguments
-  Log.info { "Starting GRML agent command: #{command}" }
-  agent = GRML::Agent.new
+  Log.info { "Starting GRML agent act: #{command}" }
 
-  Signal::INT.trap { agent.terminate && exit }
-  Signal::TERM.trap { agent.terminate && exit }
-
-  begin
-    agent.boot
-    if command == "create_alpine_image"
-      agent.create_alpine_image(iso_path)
-    else
-      sleep
-    end
-  ensure
-    agent.terminate
+  case command
+  when "boot"
+    Boot.new.run
+  when "create_alpine_image"
+    CreateAlpineImage.new(iso_path).run
   end
 end
 
-private def parse_arguments : Tuple(String?, String?)
+private def parse_arguments : Tuple(String, String?)
   args = @arguments.dup
   command = args.shift?
   unless command == "boot" || command == "create_alpine_image"
@@ -35,7 +27,7 @@ private def parse_arguments : Tuple(String?, String?)
     usage_error
   end
 
-  {command, iso_path}
+  {command.not_nil!, iso_path}
 end
 
 private def usage_error : NoReturn
