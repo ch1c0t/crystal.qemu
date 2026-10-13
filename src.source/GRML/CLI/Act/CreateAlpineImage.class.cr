@@ -1,3 +1,5 @@
+include WithAgent
+
 def initialize(@iso_path : String? = nil)
 end
 
