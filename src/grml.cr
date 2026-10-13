@@ -101,79 +101,71 @@ module GRML
   end
 
   module CLI
-  
-    class Act
-      getter arguments : Array(String)
-      
-      def initialize(@arguments : Array(String) = ARGV.dup)
-      end
-      
-      def run : Nil
-        command, iso_path = parse_arguments
-        Log.info { "Starting GRML agent act: #{command}" }
-      
-        case command
-        when "boot"
-          Boot.new.run
-        when "create_alpine_image"
-          CreateAlpineImage.new(iso_path).run
-        end
-      end
-      
-      private def parse_arguments : Tuple(String, String?)
-        args = @arguments.dup
-        command = args.shift?
-        unless command == "boot" || command == "create_alpine_image"
-          usage_error
-        end
-      
-        iso_path = args.shift?
-        if (command == "boot" && iso_path) || !args.empty?
-          usage_error
-        end
-      
-        {command.not_nil!, iso_path}
-      end
-      
-      private def usage_error : NoReturn
+
+    def self.run(arguments : Array(String) = ARGV.dup) : Nil
+      args = arguments.dup
+      command = args.shift?
+
+      case command
+      when "boot"
+        Act::Boot.new(args).run
+      when "create_alpine_image"
+        Act::CreateAlpineImage.new(args).run
+      else
         STDERR.puts "Usage: grml.agent <boot|create_alpine_image> [alpine_iso_path]"
         exit 1
       end
-    
-      module WithAgent
-        def run : Nil
-          agent = GRML::Agent.new
-        
-          Signal::INT.trap { agent.terminate && exit }
-          Signal::TERM.trap { agent.terminate && exit }
-        
-          begin
-            agent.boot
-            perform(agent)
-          ensure
-            agent.terminate
-          end
+    end
+
+    class Act
+      getter arguments : Array(String)
+
+      def initialize(@arguments : Array(String) = [] of String)
+      end
+
+      def run : Nil
+        agent = GRML::Agent.new
+
+        Signal::INT.trap { agent.terminate && exit }
+        Signal::TERM.trap { agent.terminate && exit }
+
+        begin
+          agent.boot
+          perform(agent)
+        ensure
+          agent.terminate
         end
       end
-    
-      class Boot
-        include WithAgent
-        
-        protected def perform(agent : GRML::Agent) : Nil
-          Log.info { "GRML agent is running. Press Ctrl-C to terminate the VM." }
-          sleep
+
+      abstract def perform(agent : GRML::Agent) : Nil
+    end
+
+    class Act::Boot < Act
+      def initialize(arguments : Array(String) = [] of String)
+        unless arguments.empty?
+          STDERR.puts "Usage: grml.agent boot"
+          exit 1
         end
       end
-    
-      class CreateAlpineImage
-        include WithAgent
-        
-        def initialize(@iso_path : String? = nil)
+
+      protected def perform(agent : GRML::Agent) : Nil
+        Log.info { "GRML agent is running. Press Ctrl-C to terminate the VM." }
+        sleep
+      end
+    end
+
+    class Act::CreateAlpineImage < Act
+      def initialize(arguments : Array(String) = [] of String)
+        if arguments.size > 1
+          STDERR.puts "Usage: grml.agent create_alpine_image [alpine_iso_path]"
+          exit 1
         end
-        
-        protected def perform(agent : GRML::Agent) : Nil
-          agent.create_alpine_image(@iso_path)
-        end
+
+        @iso_path = arguments.first?
+      end
+
+      protected def perform(agent : GRML::Agent) : Nil
+        agent.create_alpine_image(@iso_path)
       end
     end
   end
