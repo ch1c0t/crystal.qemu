@@ -1,4 +1,3 @@
-module GRML
   class Agent
     LOG = Log.for("grml.agent")
 
@@ -42,4 +41,3 @@ module GRML
       @terminated
     end
   end
-end
