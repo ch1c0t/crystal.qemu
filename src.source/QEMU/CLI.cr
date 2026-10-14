@@ -2,7 +2,7 @@ def self.run(arguments : Array(String) = ARGV.dup) : Nil
   args = arguments.dup
   command = args.shift?
   distribution = args.shift?.try(&.downcase)
-  unless command == "boot" && distribution && ["grml", "alpine"].includes?(distribution)
+  unless command == "boot" && !distribution.nil? && ["grml", "alpine"].includes?(distribution.not_nil!)
     STDERR.puts "Usage: qemu.agent boot <grml|alpine> [--iso PATH]"
     exit 1
   end
