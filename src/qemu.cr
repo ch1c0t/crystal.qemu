@@ -195,6 +195,20 @@ module QEMU
   end
 
   class VM
+    module VerifySharedDirectory
+      def verify_shared_directory : Bool
+        unless Dir.exists?(@shared_path)
+          raise "QEMU shared directory does not exist: #{@shared_path}"
+        end
+
+        unless File.directory?(@shared_path)
+          raise "QEMU shared path is not a directory: #{@shared_path}"
+        end
+
+        true
+      end
+    end
+
     module ExecuteQMP
       def execute_qmp(execute_command : String, arguments : Hash(String, JSON::Any)? = nil) : JSON::Any
         unless running?
@@ -281,6 +295,8 @@ module QEMU
       
       def start : Bool
         return false if @display
+
+        verify_shared_directory
       
         File.delete(@monitor_path) if File.exists?(@monitor_path)
         File.delete(@guest_agent_path) if File.exists?(@guest_agent_path)
@@ -345,6 +361,7 @@ module QEMU
     end
     
     include Start
+    include VerifySharedDirectory
     include Terminate
     include ExecuteQMP
     
