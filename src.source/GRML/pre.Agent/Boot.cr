@@ -19,5 +19,8 @@ def boot : Nil
   end
 
   Log.info { "QEMU Guest Agent is operational" }
+  Log.info { "Verifying GRML shared directory" }
+  verify_shared_directory
+  Log.info { "GRML shared directory is operational" }
   Log.info { "Press Ctrl-C to terminate the VM." }
 end
