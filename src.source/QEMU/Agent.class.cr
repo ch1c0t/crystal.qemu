@@ -5,7 +5,7 @@ getter vm : VM
 getter context : XephyrContext
 getter context_process : ProcessSupervisor
 
-def initialize(@vm : VM = VM.new)
+def initialize(@vm : VM)
   display = @vm.display
   raise "QEMU VM did not provide a display" if display.nil?
 
