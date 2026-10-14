@@ -197,7 +197,7 @@ module QEMU
   class VM
     module VerifySharedDirectory
       def verify_shared_directory : Bool
-        unless Dir.exists?(@shared_path)
+        unless File.exists?(@shared_path)
           raise "QEMU shared directory does not exist: #{@shared_path}"
         end
 
