@@ -1,16 +1,17 @@
 grml.agent boots GRML and provides an interactive command line.
 
 Usage:
-  grml.agent boot
+  grml.agent boot [--iso PATH]
   grml.agent create_alpine_image [alpine_iso_path]
   grml.agent --help
   grml.agent --version
 
-The boot command starts the GRML VM, advances through its boot prompts,
-waits for the root@grml shell prompt, and keeps the VM running until Ctrl-C.
+The boot command discovers a GRML ISO in ./cdrom/ unless --iso is supplied.
+It advances through GRML boot prompts, waits for the root@grml shell prompt,
+and keeps the VM running until Ctrl-C.
 
-The create_alpine_image command boots GRML, then checks the shared directory
-for a non-empty Alpine Linux ISO. An explicit ISO path may be supplied.
+The create_alpine_image command boots GRML, then discovers an Alpine ISO in
+./cdrom/ unless an explicit Alpine ISO path is supplied.
 
 Logging:
   XEPHYR_LOG_LEVEL=INFO|DEBUG|TRACE (default: INFO)
