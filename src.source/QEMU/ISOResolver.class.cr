@@ -3,7 +3,9 @@ class ISOResolver
 
   def self.resolve(distribution : String, path : String? = nil) : String
     return validate(path) if path
-    directory = File.expand_path(ENV.fetch("QEMU_ISO_DIR", DEFAULT_DIRECTORY))
+    configured_directory = ENV["QEMU_ISO_DIR"]?
+    default_directory = File.exists?(DEFAULT_DIRECTORY) ? DEFAULT_DIRECTORY : File.join(ENV.fetch("HOME"), "Downloads", "ISOs")
+    directory = File.expand_path(configured_directory || default_directory)
     raise "ISO directory does not exist: #{directory}" unless Dir.exists?(directory)
     pattern = /(?i)#{Regex.escape(distribution)}.*\.iso\z/
     candidates = Dir.glob(File.join(directory, "*")).select do |candidate|
