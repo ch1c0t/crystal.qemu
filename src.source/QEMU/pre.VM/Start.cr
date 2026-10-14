@@ -3,6 +3,8 @@ include BuildQEMUCommand
 def start : Bool
   return false if @display
 
+  verify_shared_directory
+
   File.delete(@monitor_path) if File.exists?(@monitor_path)
   File.delete(@guest_agent_path) if File.exists?(@guest_agent_path)
 
