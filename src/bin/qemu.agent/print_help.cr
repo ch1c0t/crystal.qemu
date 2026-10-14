@@ -6,9 +6,10 @@ Usage:
   qemu.agent --help
   qemu.agent --version
 
-Without --iso, qemu.agent discovers a matching ISO in ./cdrom/.
-Set QEMU_ISO_DIR to use a different discovery directory. If multiple
-matching ISOs are found, specify one with --iso PATH.
+Without --iso, qemu.agent discovers a matching ISO in ./cdrom/ if that
+directory exists; otherwise it uses ~/Downloads/ISOs/. Set QEMU_ISO_DIR to
+override the discovery directory. If multiple matching ISOs are found,
+specify one with --iso PATH.
 
 Logging:
   XEPHYR_LOG_LEVEL=INFO|DEBUG|TRACE (default: INFO)
