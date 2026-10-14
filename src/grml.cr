@@ -48,7 +48,8 @@ module GRML
             raise "Guest-created shared file is not visible to the host"
           end
         ensure
-          @interaction.execute("unlink #{guest_host_file} #{guest_file}")
+          @interaction.execute("unlink #{guest_host_file}")
+    @interaction.execute("unlink #{guest_file}")
           File.delete(host_file) if File.exists?(host_file)
         end
       end
