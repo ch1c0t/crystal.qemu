@@ -10,7 +10,7 @@ def execute(command : String, timeout : Time::Span = 30.seconds) : CommandResult
     pid = guest_agent_request(socket, "guest-exec", arguments).as_h["pid"].as_i
     wait_for_command(socket, pid, timeout)
   end
-rescue error : Errno
+rescue error : IO::Error
   raise "Cannot connect to QEMU Guest Agent at #{@vm.guest_agent_path}: #{error.message}"
 end
 
