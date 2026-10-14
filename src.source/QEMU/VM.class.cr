@@ -1,4 +1,4 @@
-property name : String? 
+property name : String?
 property memory : String
 property cpus : Int32
 property iso_path : String
@@ -9,11 +9,11 @@ property guest_agent_path : String
 getter display : String? = nil
 
 def initialize(
-  @name = nil, 
-  @memory = "6G", 
-  @cpus = 2, 
-  @iso_path = "alpine.iso", 
-  @shared_path = "#{ENV["HOME"]}/shared/", 
+  @iso_path : String,
+  @name = nil,
+  @memory = "6G",
+  @cpus = 2,
+  @shared_path = "#{ENV["HOME"]}/shared/",
   @monitor_path = "/tmp/qmp-guest-#{Process.pid}-#{Random.rand(100000)}.sock",
   @guest_agent_path = "/tmp/qga-guest-#{Process.pid}-#{Random.rand(100000)}.sock",
   auto_start : Bool = true
