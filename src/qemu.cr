@@ -156,6 +156,9 @@ module QEMU
           "-vga", "virtio",
           "-fsdev", "local,security_model=mapped,id=shared0,path=#{@shared_path}",
           "-device", "virtio-9p-pci,fsdev=shared0,mount_tag=shared0",
+          "-chardev", "socket,path=#{@guest_agent_path},server=on,wait=off,id=qga0",
+          "-device", "virtio-serial-pci",
+          "-device", "virtserialport,chardev=qga0,name=org.qemu.guest_agent.0",
           "-cdrom", @iso_path,
           "-qmp", "unix:#{@monitor_path},server,nowait"
         ])
@@ -167,6 +170,9 @@ module QEMU
         return false if @display
       
         File.delete(@monitor_path) if File.exists?(@monitor_path)
+      
+        File.delete(@guest_agent_path) if File.exists?(@guest_agent_path)
+
       
         qemu_cmd = build_qemu_command
         stdout_buffer = IO::Memory.new
@@ -187,6 +193,9 @@ module QEMU
           result = Process.run("xephyr-kill", [target_display], shell: false)
           File.delete(@monitor_path) if File.exists?(@monitor_path)
       
+          File.delete(@guest_agent_path) if File.exists?(@guest_agent_path)
+
+      
           if result.success?
             @display = nil
             true
@@ -204,7 +213,8 @@ module QEMU
     property cpus : Int32
     property iso_path : String
     property shared_path : String
-    property monitor_path : String 
+    property monitor_path : String
+    property guest_agent_path : String
     
     getter display : String? = nil
     
@@ -215,6 +225,7 @@ module QEMU
       @iso_path = "alpine.iso", 
       @shared_path = "#{ENV["HOME"]}/shared/", 
       @monitor_path = "/tmp/qmp-guest-#{Process.pid}-#{Random.rand(100000)}.sock",
+      @guest_agent_path = "/tmp/qga-guest-#{Process.pid}-#{Random.rand(100000)}.sock",
       auto_start : Bool = true
     )
       if auto_start
