@@ -7,7 +7,8 @@ Usage:
   qemu.agent --version
 
 Without --iso, qemu.agent discovers a matching ISO in ./cdrom/.
-If multiple matching ISOs are found, specify one with --iso PATH.
+Set QEMU_ISO_DIR to use a different discovery directory. If multiple
+matching ISOs are found, specify one with --iso PATH.
 
 Logging:
   XEPHYR_LOG_LEVEL=INFO|DEBUG|TRACE (default: INFO)
