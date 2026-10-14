@@ -26,6 +26,7 @@ def initialize(
 end
 
 include Start
+include VerifySharedDirectory
 include Terminate
 include ExecuteQMP
 
