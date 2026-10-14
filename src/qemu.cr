@@ -1,5 +1,5 @@
-require "process"
 require "base64"
+require "process"
 require "socket"
 require "file_utils"
 require "json"
@@ -9,41 +9,7 @@ require "global-amqp_channel"
 
 module QEMU
 
-  struct CommandResult
-    getter exit_code : Int32
-    getter stdout : String
-    getter stderr : String
-  
-    def initialize(@exit_code : Int32, @stdout : String, @stderr : String)
-    end
-  
-    def success? : Bool
-      @exit_code == 0
-    end
-  end
-
   class Agent
-    module WaitForText
-      def wait_for_text(
-        text : String,
-        timeout : Time::Span = 60.seconds,
-        region : Symbol = :full_screen
-      ) : XephyrContext::State
-        wait_for_text(text, timeout, XephyrContext::ScreenRegion.from_symbol(region))
-      end
-      
-      def wait_for_text(
-        text : String,
-        timeout : Time::Span = 60.seconds,
-        region : XephyrContext::ScreenRegion = XephyrContext::ScreenRegion.full_screen,
-      ) : XephyrContext::State
-        @context.wait_until(text, timeout, region)
-      rescue error : RuntimeError
-        raise error unless error.message == "Timed out waiting for #{text.inspect}"
-        raise TimeoutError.new(error.message || "Timed out waiting for text")
-      end
-    end
-  
     module Execute
       def execute(command : String, timeout : Time::Span = 30.seconds) : CommandResult
         UNIXSocket.open(@vm.guest_agent_path) do |socket|
@@ -118,9 +84,29 @@ module QEMU
         end
         data["return"]? || raise "QEMU Guest Agent response has no return value"
       end
-  
     end
-
+  
+    module WaitForText
+      def wait_for_text(
+        text : String,
+        timeout : Time::Span = 60.seconds,
+        region : Symbol = :full_screen
+      ) : XephyrContext::State
+        wait_for_text(text, timeout, XephyrContext::ScreenRegion.from_symbol(region))
+      end
+      
+      def wait_for_text(
+        text : String,
+        timeout : Time::Span = 60.seconds,
+        region : XephyrContext::ScreenRegion = XephyrContext::ScreenRegion.full_screen,
+      ) : XephyrContext::State
+        @context.wait_until(text, timeout, region)
+      rescue error : RuntimeError
+        raise error unless error.message == "Timed out waiting for #{text.inspect}"
+        raise TimeoutError.new(error.message || "Timed out waiting for text")
+      end
+    end
+  
     class TimeoutError < Exception
     end
     
@@ -159,6 +145,19 @@ module QEMU
       end
     
       result
+    end
+  end
+
+  struct CommandResult
+    getter exit_code : Int32
+    getter stdout : String
+    getter stderr : String
+    
+    def initialize(@exit_code : Int32, @stdout : String, @stderr : String)
+    end
+    
+    def success? : Bool
+      @exit_code == 0
     end
   end
 
