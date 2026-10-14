@@ -10,7 +10,7 @@ require "global-amqp_channel"
 module QEMU
 
   class ISOResolver
-    DEFAULT_DIRECTORY = "./cdrom"
+    DEFAULT_DIRECTORY = ENV.fetch("QEMU_ISO_DIR", "./cdrom")
 
     def self.resolve(distribution : String, path : String? = nil) : String
       return validate(path) if path
