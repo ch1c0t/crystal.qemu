@@ -20,6 +20,7 @@ def initialize(@vm : VM = VM.new)
 end
 
 include WaitForText
+include Execute
 
 def terminate : Bool
   result = false
