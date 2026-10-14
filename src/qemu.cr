@@ -10,11 +10,11 @@ require "global-amqp_channel"
 module QEMU
 
   class ISOResolver
-    DEFAULT_DIRECTORY = ENV.fetch("QEMU_ISO_DIR", "./cdrom")
+    DEFAULT_DIRECTORY = "./cdrom"
 
     def self.resolve(distribution : String, path : String? = nil) : String
       return validate(path) if path
-      directory = File.expand_path(DEFAULT_DIRECTORY)
+      directory = File.expand_path(ENV.fetch("QEMU_ISO_DIR", DEFAULT_DIRECTORY))
       raise "ISO directory does not exist: #{directory}" unless Dir.exists?(directory)
       pattern = /(?i)#{Regex.escape(distribution)}.*\.iso\z/
       candidates = Dir.glob(File.join(directory, "*")).select do |candidate|
