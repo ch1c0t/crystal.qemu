@@ -7,12 +7,12 @@ Usage:
   grml.agent --help
   grml.agent --version
 
-The boot command discovers a GRML ISO in ./cdrom/ unless --iso is supplied.
-It advances through GRML boot prompts, waits for the root@grml shell prompt,
-and keeps the VM running until Ctrl-C.
+The boot command discovers a GRML ISO in ./cdrom/ (or QEMU_ISO_DIR) unless
+--iso is supplied. It advances through GRML boot prompts, waits for the
+root@grml shell prompt, and keeps the VM running until Ctrl-C.
 
 The create_alpine_image command boots GRML, then discovers an Alpine ISO in
-./cdrom/ unless an explicit Alpine ISO path is supplied.
+./cdrom/ (or QEMU_ISO_DIR) unless an explicit Alpine ISO path is supplied.
 
 Logging:
   XEPHYR_LOG_LEVEL=INFO|DEBUG|TRACE (default: INFO)
