@@ -34,7 +34,7 @@ module GRML
   
     module VerifySharedDirectory
       def verify_shared_directory : Nil
-        token = Random.rand(1..Int64::MAX).to_s
+        token = Random.rand(1_i64..Int64::MAX).to_s
         host_file = File.join(@vm.shared_path, ".qemu-host-check-#{token}")
         guest_host_file = "/mnt/shared/.qemu-host-check-#{token}"
         guest_file = "/mnt/shared/.qemu-guest-check-#{token}"
