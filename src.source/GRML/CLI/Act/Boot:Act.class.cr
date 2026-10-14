@@ -1,7 +1,11 @@
 def validate_arguments
-  unless @arguments.empty?
-    STDERR.puts "Usage: grml.agent boot"
-    exit 1
+  if @arguments.size == 2 && @arguments[0] == "--iso"
+    @boot_iso_path = @arguments[1]
+  else
+    unless @arguments.empty?
+      STDERR.puts "Usage: grml.agent boot [--iso PATH]"
+      exit 1
+    end
   end
 end
 
