@@ -24,7 +24,7 @@ end
 
 private def wait_for_command(
   socket : UNIXSocket,
-  pid : Int32,
+  pid : Int64,
   timeout : Time::Span
 ) : CommandResult
   deadline = Time.instant + timeout
@@ -63,7 +63,7 @@ private def guest_agent_request(
   payload["arguments"] = JSON::Any.new(arguments) if arguments
   socket.puts(payload.to_json)
   line = socket.gets || raise "QEMU Guest Agent disconnected"
-  line = line[1..] if line.starts_with?("\xff")
+  line = line.byte_slice(1, line.bytesize - 1) if line.starts_with?("\xff")
   response = JSON.parse(line)
   data = response.as_h
   if error = data["error"]?
