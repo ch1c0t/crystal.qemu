@@ -17,7 +17,15 @@ module GRML
       
         Log.info { "Waiting for GRML shell prompt" }
         @interaction.wait_for_text("root@grml", 180.seconds, :bottom_tenth)
-        Log.info { "GRML command line ready. Press Ctrl-C to terminate the VM." }
+        Log.info { "GRML command line ready; checking QEMU Guest Agent" }
+
+        result = @interaction.execute("printf 'qemu-guest-agent-ok\\n'")
+        unless result.success? && result.stdout.strip == "qemu-guest-agent-ok"
+          raise "QEMU Guest Agent test failed (exit=#{result.exit_code}, stdout=#{result.stdout.inspect}, stderr=#{result.stderr.inspect})"
+        end
+
+        Log.info { "QEMU Guest Agent is operational" }
+        Log.info { "Press Ctrl-C to terminate the VM." }
       end
     end
   
