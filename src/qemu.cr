@@ -9,6 +9,40 @@ require "global-amqp_channel"
 
 module QEMU
 
+  class ISOResolver
+    DEFAULT_DIRECTORY = "./cdrom"
+
+    def self.resolve(distribution : String, path : String? = nil) : String
+      return validate(path) if path
+      directory = File.expand_path(DEFAULT_DIRECTORY)
+      raise "ISO directory does not exist: #{directory}" unless Dir.exists?(directory)
+      pattern = /(?i)#{Regex.escape(distribution)}.*\.iso\z/
+      candidates = Dir.glob(File.join(directory, "*")).select do |candidate|
+        File.file?(candidate) && File.basename(candidate).matches?(pattern) && File.size(candidate) > 0
+      end
+      case candidates.size
+      when 1
+        validate(candidates.first)
+      when 0
+        raise "No #{distribution} ISO found in #{directory}; pass an ISO path explicitly"
+      else
+        names = candidates.map { |candidate| File.basename(candidate) }.join(", ")
+        raise "Multiple #{distribution} ISOs found in #{directory}: #{names}; pass an ISO path explicitly"
+      end
+    end
+
+    private def self.validate(path : String) : String
+      absolute_path = File.expand_path(path)
+      unless File.file?(absolute_path) && File.extname(absolute_path).downcase == ".iso" && File.size(absolute_path) > 0
+        raise "Not a non-empty ISO file: #{absolute_path}"
+      end
+      File.open(absolute_path) { }
+      absolute_path
+    rescue error : File::Error
+      raise "Cannot read ISO #{path}: #{error.message}"
+    end
+  end
+
   class Agent
     module Execute
       def execute(command : String, timeout : Time::Span = 30.seconds) : CommandResult
@@ -44,7 +78,7 @@ module QEMU
     getter context : XephyrContext
     getter context_process : ProcessSupervisor
     
-    def initialize(@vm : VM = VM.new)
+    def initialize(@vm : VM)
       display = @vm.display
       raise "QEMU VM did not provide a display" if display.nil?
     
@@ -344,11 +378,11 @@ module QEMU
     getter display : String? = nil
     
     def initialize(
-      @name = nil, 
-      @memory = "6G", 
-      @cpus = 2, 
-      @iso_path = "alpine.iso", 
-      @shared_path = "#{ENV["HOME"]}/shared/", 
+      @iso_path : String,
+      @name = nil,
+      @memory = "6G",
+      @cpus = 2,
+      @shared_path = "#{ENV["HOME"]}/shared/",
       @monitor_path = "/tmp/qmp-guest-#{Process.pid}-#{Random.rand(100000)}.sock",
       @guest_agent_path = "/tmp/qga-guest-#{Process.pid}-#{Random.rand(100000)}.sock",
       auto_start : Bool = true
