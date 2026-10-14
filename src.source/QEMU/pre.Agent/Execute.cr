@@ -19,7 +19,7 @@ private def synchronize_guest_agent(socket : UNIXSocket) : Nil
   socket.write("\xff")
   arguments = {"id" => JSON::Any.new(id)}
   response = guest_agent_request(socket, "guest-sync-delimited", arguments)
-  raise "QEMU Guest Agent synchronization failed" unless response.as_i64 == id
+  raise "QEMU Guest Agent synchronization failed" unless response.as_i == id
 end
 
 private def wait_for_command(
@@ -62,8 +62,9 @@ private def guest_agent_request(
   payload = {"execute" => JSON::Any.new(command)}
   payload["arguments"] = JSON::Any.new(arguments) if arguments
   socket.puts(payload.to_json)
-  response = JSON.parse(socket.gets || raise "QEMU Guest Agent disconnected")
-  response = JSON.parse(response.to_s[1..]) if response.to_s.starts_with?("\xff")
+  line = socket.gets || raise "QEMU Guest Agent disconnected"
+  line = line[1..] if line.starts_with?("\xff")
+  response = JSON.parse(line)
   data = response.as_h
   if error = data["error"]?
     raise "QEMU Guest Agent error: #{error}"
