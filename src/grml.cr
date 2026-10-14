@@ -18,12 +18,12 @@ module GRML
         Log.info { "Waiting for GRML shell prompt" }
         @interaction.wait_for_text("root@grml", 180.seconds, :bottom_tenth)
         Log.info { "GRML command line ready; checking QEMU Guest Agent" }
-
+      
         result = @interaction.execute("printf 'qemu-guest-agent-ok\\n'")
         unless result.success? && result.stdout.strip == "qemu-guest-agent-ok"
           raise "QEMU Guest Agent test failed (exit=#{result.exit_code}, stdout=#{result.stdout.inspect}, stderr=#{result.stderr.inspect})"
         end
-
+      
         Log.info { "QEMU Guest Agent is operational" }
         Log.info { "Verifying GRML shared directory" }
         verify_shared_directory
@@ -32,55 +32,12 @@ module GRML
       end
     end
   
-    module VerifySharedDirectory
-      def verify_shared_directory : Nil
-        token = Random.rand(1_i64..Int64::MAX).to_s
-        host_file = File.join(@vm.shared_path, ".qemu-host-check-#{token}")
-        guest_host_file = "/mnt/shared/.qemu-host-check-#{token}"
-        guest_file = "/mnt/shared/.qemu-guest-check-#{token}"
-        File.write(host_file, token)
-
-        begin
-          verify_guest_mount
-          verify_guest_read(guest_host_file, token)
-          verify_guest_write(guest_file, token)
-          unless File.read(File.join(@vm.shared_path, File.basename(guest_file))) == token
-            raise "Guest-created shared file is not visible to the host"
-          end
-        ensure
-          @interaction.execute("unlink #{guest_host_file}")
-    @interaction.execute("unlink #{guest_file}")
-          File.delete(host_file) if File.exists?(host_file)
-        end
-      end
-
-      private def verify_guest_mount : Nil
-        command = "mkdir -p /mnt/shared && (mountpoint -q /mnt/shared || " +
-          "mount -t 9p -o trans=virtio,version=9p2000.L shared0 /mnt/shared)"
-        result = @interaction.execute(command)
-        raise "Could not mount QEMU shared directory at /mnt/shared" unless result.success?
-      end
-
-      private def verify_guest_read(path : String, expected : String) : Nil
-        result = @interaction.execute("cat #{path}")
-        unless result.success? && result.stdout.strip == expected
-          raise "GRML guest cannot read files from the shared directory"
-        end
-      end
-
-      private def verify_guest_write(path : String, token : String) : Nil
-        result = @interaction.execute("printf '%s' #{token} > #{path}")
-        raise "GRML guest cannot write to the shared directory" unless result.success?
-      end
-    end
-
     module CreateAlpineImage
       def create_alpine_image(iso_path : String? = nil) : Nil
         iso = QEMU::ISOResolver.resolve("alpine", iso_path)
         Log.info { "Found Alpine Linux ISO: #{iso}" }
         raise "Alpine image creation workflow is not implemented yet"
       end
-
     end
   
     module Terminate
@@ -95,6 +52,48 @@ module GRML
           Log.error { "GRML agent reported a shutdown failure" }
         end
         @terminated
+      end
+    end
+  
+    module VerifySharedDirectory
+      def verify_shared_directory : Nil
+        token = Random.rand(1_i64..Int64::MAX).to_s
+        host_file = File.join(@vm.shared_path, ".qemu-host-check-#{token}")
+        guest_host_file = "/mnt/shared/.qemu-host-check-#{token}"
+        guest_file = "/mnt/shared/.qemu-guest-check-#{token}"
+        File.write(host_file, token)
+      
+        begin
+          verify_guest_mount
+          verify_guest_read(guest_host_file, token)
+          verify_guest_write(guest_file, token)
+          unless File.read(File.join(@vm.shared_path, File.basename(guest_file))) == token
+            raise "Guest-created shared file is not visible to the host"
+          end
+        ensure
+          @interaction.execute("unlink #{guest_host_file}")
+          @interaction.execute("unlink #{guest_file}")
+          File.delete(host_file) if File.exists?(host_file)
+        end
+      end
+      
+      private def verify_guest_mount : Nil
+        command = "mkdir -p /mnt/shared && (mountpoint -q /mnt/shared || " +
+          "mount -t 9p -o trans=virtio,version=9p2000.L shared0 /mnt/shared)"
+        result = @interaction.execute(command)
+        raise "Could not mount QEMU shared directory at /mnt/shared" unless result.success?
+      end
+      
+      private def verify_guest_read(path : String, expected : String) : Nil
+        result = @interaction.execute("cat #{path}")
+        unless result.success? && result.stdout.strip == expected
+          raise "GRML guest cannot read files from the shared directory"
+        end
+      end
+      
+      private def verify_guest_write(path : String, token : String) : Nil
+        result = @interaction.execute("printf '%s' #{token} > #{path}")
+        raise "GRML guest cannot write to the shared directory" unless result.success?
       end
     end
   
@@ -144,10 +143,8 @@ module GRML
       
       def run : Nil
         agent = GRML::Agent.new(@boot_iso_path)
-      
         Signal::INT.trap { agent.terminate && exit }
         Signal::TERM.trap { agent.terminate && exit }
-      
         begin
           agent.boot
           perform(agent)

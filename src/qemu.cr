@@ -9,42 +9,6 @@ require "global-amqp_channel"
 
 module QEMU
 
-  class ISOResolver
-    DEFAULT_DIRECTORY = "./cdrom"
-
-    def self.resolve(distribution : String, path : String? = nil) : String
-      return validate(path) if path
-      configured_directory = ENV["QEMU_ISO_DIR"]?
-    default_directory = File.exists?(DEFAULT_DIRECTORY) ? DEFAULT_DIRECTORY : File.join(ENV.fetch("HOME"), "Downloads", "ISOs")
-    directory = File.expand_path(configured_directory || default_directory)
-      raise "ISO directory does not exist: #{directory}" unless Dir.exists?(directory)
-      pattern = /(?i)#{Regex.escape(distribution)}.*\.iso\z/
-      candidates = Dir.glob(File.join(directory, "*")).select do |candidate|
-        File.file?(candidate) && File.basename(candidate).matches?(pattern) && File.size(candidate) > 0
-      end
-      case candidates.size
-      when 1
-        validate(candidates.first)
-      when 0
-        raise "No #{distribution} ISO found in #{directory}; pass an ISO path explicitly"
-      else
-        names = candidates.map { |candidate| File.basename(candidate) }.join(", ")
-        raise "Multiple #{distribution} ISOs found in #{directory}: #{names}; pass an ISO path explicitly"
-      end
-    end
-
-    private def self.validate(path : String) : String
-      absolute_path = File.expand_path(path)
-      unless File.file?(absolute_path) && File.extname(absolute_path).downcase == ".iso" && File.size(absolute_path) > 0
-        raise "Not a non-empty ISO file: #{absolute_path}"
-      end
-      File.open(absolute_path) { }
-      absolute_path
-    rescue error : File::Error
-      raise "Cannot read ISO #{path}: #{error.message}"
-    end
-  end
-
   class Agent
     module Execute
       def execute(command : String, timeout : Time::Span = 30.seconds) : CommandResult
@@ -114,6 +78,48 @@ module QEMU
     end
   end
 
+  module CLI
+    def self.run(arguments : Array(String) = ARGV.dup) : Nil
+      args = arguments.dup
+      command = args.shift?
+      distribution = args.shift?.try(&.downcase)
+      unless command == "boot" && !distribution.nil? && ["grml", "alpine"].includes?(distribution.not_nil!)
+        STDERR.puts "Usage: qemu.agent boot <grml|alpine> [--iso PATH]"
+        exit 1
+      end
+      iso_path = nil.as(String?)
+      if args.size == 2 && args[0] == "--iso"
+        iso_path = args[1]
+      elsif !args.empty?
+        STDERR.puts "Usage: qemu.agent boot <grml|alpine> [--iso PATH]"
+        exit 1
+      end
+      iso = ISOResolver.resolve(distribution.not_nil!, iso_path)
+      agent = Agent.new(VM.new(iso_path: iso))
+      Signal::INT.trap { agent.terminate && exit }
+      Signal::TERM.trap { agent.terminate && exit }
+      begin
+        Log.info { "Booting #{distribution} from #{iso}" }
+        sleep
+      ensure
+        agent.terminate
+      end
+    end
+  end
+
+  struct CommandResult
+    getter exit_code : Int32
+    getter stdout : String
+    getter stderr : String
+    
+    def initialize(@exit_code : Int32, @stdout : String, @stderr : String)
+    end
+    
+    def success? : Bool
+      @exit_code == 0
+    end
+  end
+
   class GuestAgent
     getter socket_path : String
     
@@ -142,7 +148,7 @@ module QEMU
         "arg" => JSON::Any.new(["-lc", command].map { |arg| JSON::Any.new(arg) }),
         "capture-output" => JSON::Any.new(true),
       }
-      request(socket, "guest-exec", arguments).as_h["pid"].as_i
+      request(socket, "guest-exec", arguments).as_h["pid"].as_i64
     end
     
     private def wait_for_command(
@@ -189,17 +195,40 @@ module QEMU
       data["return"]? || raise "QEMU Guest Agent response has no return value"
     end
   end
-  
-  struct CommandResult
-    getter exit_code : Int32
-    getter stdout : String
-    getter stderr : String
+
+  class ISOResolver
+    DEFAULT_DIRECTORY = "./cdrom"
     
-    def initialize(@exit_code : Int32, @stdout : String, @stderr : String)
+    def self.resolve(distribution : String, path : String? = nil) : String
+      return validate(path) if path
+      configured_directory = ENV["QEMU_ISO_DIR"]?
+      default_directory = File.exists?(DEFAULT_DIRECTORY) ? DEFAULT_DIRECTORY : File.join(ENV.fetch("HOME"), "Downloads", "ISOs")
+      directory = File.expand_path(configured_directory || default_directory)
+      raise "ISO directory does not exist: #{directory}" unless Dir.exists?(directory)
+      pattern = /(?i)#{Regex.escape(distribution)}.*\.iso\z/
+      candidates = Dir.glob(File.join(directory, "*")).select do |candidate|
+        File.file?(candidate) && File.basename(candidate).matches?(pattern) && File.size(candidate) > 0
+      end
+      case candidates.size
+      when 1
+        validate(candidates.first)
+      when 0
+        raise "No #{distribution} ISO found in #{directory}; pass an ISO path explicitly"
+      else
+        names = candidates.map { |candidate| File.basename(candidate) }.join(", ")
+        raise "Multiple #{distribution} ISOs found in #{directory}: #{names}; pass an ISO path explicitly"
+      end
     end
     
-    def success? : Bool
-      @exit_code == 0
+    private def self.validate(path : String) : String
+      absolute_path = File.expand_path(path)
+      unless File.file?(absolute_path) && File.extname(absolute_path).downcase == ".iso" && File.size(absolute_path) > 0
+        raise "Not a non-empty ISO file: #{absolute_path}"
+      end
+      File.open(absolute_path) { }
+      absolute_path
+    rescue error : File::Error
+      raise "Cannot read ISO #{path}: #{error.message}"
     end
   end
 
@@ -231,20 +260,6 @@ module QEMU
   end
 
   class VM
-    module VerifySharedDirectory
-      def verify_shared_directory : Bool
-        unless File.exists?(@shared_path)
-          raise "QEMU shared directory does not exist: #{@shared_path}"
-        end
-
-        unless File.directory?(@shared_path)
-          raise "QEMU shared path is not a directory: #{@shared_path}"
-        end
-
-        true
-      end
-    end
-
     module ExecuteQMP
       def execute_qmp(execute_command : String, arguments : Hash(String, JSON::Any)? = nil) : JSON::Any
         unless running?
@@ -331,7 +346,7 @@ module QEMU
       
       def start : Bool
         return false if @display
-
+      
         verify_shared_directory
       
         File.delete(@monitor_path) if File.exists?(@monitor_path)
@@ -369,7 +384,21 @@ module QEMU
       end
     end
   
-    property name : String? 
+    module VerifySharedDirectory
+      def verify_shared_directory : Bool
+        unless File.exists?(@shared_path)
+          raise "QEMU shared directory does not exist: #{@shared_path}"
+        end
+      
+        unless File.directory?(@shared_path)
+          raise "QEMU shared path is not a directory: #{@shared_path}"
+        end
+      
+        true
+      end
+    end
+  
+    property name : String?
     property memory : String
     property cpus : Int32
     property iso_path : String
@@ -403,34 +432,6 @@ module QEMU
     
     def running? : Bool
       !@display.nil?
-    end
-  end
-  module CLI
-    def self.run(arguments : Array(String) = ARGV.dup) : Nil
-      args = arguments.dup
-      command = args.shift?
-      distribution = args.shift?.try(&.downcase)
-      unless command == "boot" && !distribution.nil? && ["grml", "alpine"].includes?(distribution.not_nil!)
-        STDERR.puts "Usage: qemu.agent boot <grml|alpine> [--iso PATH]"
-        exit 1
-      end
-      iso_path = nil.as(String?)
-      if args.size == 2 && args[0] == "--iso"
-        iso_path = args[1]
-      elsif !args.empty?
-        STDERR.puts "Usage: qemu.agent boot <grml|alpine> [--iso PATH]"
-        exit 1
-      end
-      iso = ISOResolver.resolve(distribution.not_nil!, iso_path)
-      agent = Agent.new(VM.new(iso_path: iso))
-      Signal::INT.trap { agent.terminate && exit }
-      Signal::TERM.trap { agent.terminate && exit }
-      begin
-        Log.info { "Booting #{distribution} from #{iso}" }
-        sleep
-      ensure
-        agent.terminate
-      end
     end
   end
 end

@@ -6,6 +6,8 @@ authors:
 targets:
   grml.agent:
     main: src/bin/grml.agent.cr
+  qemu.agent:
+    main: src/bin/qemu.agent.cr
 crystal: ">= 1.15.1"
 dependencies:
   xephyr_context:
