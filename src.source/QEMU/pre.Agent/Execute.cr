@@ -16,9 +16,8 @@ end
 
 private def synchronize_guest_agent(socket : UNIXSocket) : Nil
   id = Random.rand(1_i64..Int64::MAX)
-  socket.write(Bytes[0xff])
   arguments = {"id" => JSON::Any.new(id)}
-  response = guest_agent_request(socket, "guest-sync-delimited", arguments)
+  response = guest_agent_request(socket, "guest-sync", arguments)
   raise "QEMU Guest Agent synchronization failed" unless response.as_i == id
 end
 
