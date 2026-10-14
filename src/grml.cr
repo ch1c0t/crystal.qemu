@@ -75,51 +75,12 @@ module GRML
     end
 
     module CreateAlpineImage
-      module FindAlpineISO
-        private def find_alpine_iso(iso_path : String?) : String
-          if path = iso_path
-            validate_alpine_iso(path)
-            return path
-          end
-        
-          directory = File.expand_path(@vm.shared_path)
-          raise "Shared directory does not exist: #{directory}" unless Dir.exists?(directory)
-        
-          candidates = Dir.glob(File.join(directory, "*")).select do |path|
-            File.file?(path) && File.basename(path).matches?(/(?i)alpine.*\.iso\z/) && File.size(path) > 0
-          end
-        
-          case candidates.size
-          when 0
-            raise "No non-empty Alpine Linux ISO found in shared directory: #{directory}"
-          when 1
-            validate_alpine_iso(candidates.first)
-            candidates.first
-          else
-            raise "Multiple Alpine Linux ISOs found in #{directory}; pass the desired ISO path explicitly"
-          end
-        end
-        
-        private def validate_alpine_iso(path : String) : Nil
-          unless File.file?(path) &&
-                 File.basename(path).matches?(/(?i)alpine.*\.iso\z/) &&
-                 File.size(path) > 0
-            raise "Not a non-empty Alpine Linux ISO file: #{path}"
-          end
-        
-          File.open(path) { }
-        rescue error : File::Error
-          raise "Cannot read Alpine Linux ISO #{path}: #{error.message}"
-        end
-      end
-    
       def create_alpine_image(iso_path : String? = nil) : Nil
-        iso = find_alpine_iso(iso_path)
+        iso = QEMU::ISOResolver.resolve("alpine", iso_path)
         Log.info { "Found Alpine Linux ISO: #{iso}" }
         raise "Alpine image creation workflow is not implemented yet"
       end
-      
-      include FindAlpineISO
+
     end
   
     module Terminate
@@ -140,10 +101,9 @@ module GRML
     getter vm : QEMU::VM
     getter interaction : QEMU::Agent
     
-    def initialize(
-      iso_path : String = "#{ENV["HOME"]}/Downloads/ISOs/grml-full-2026.09-amd64.iso"
-    )
-      @vm = QEMU::VM.new(iso_path: iso_path)
+    def initialize(iso_path : String? = nil)
+      resolved_iso = QEMU::ISOResolver.resolve("grml", iso_path)
+      @vm = QEMU::VM.new(iso_path: resolved_iso)
       @interaction = QEMU::Agent.new(@vm)
       @terminated = false
     end
@@ -165,15 +125,17 @@ module GRML
       when "create_alpine_image"
         Act::CreateAlpineImage.new(args).run
       else
-        STDERR.puts "Usage: grml.agent <boot|create_alpine_image> [alpine_iso_path]"
+        STDERR.puts "Usage: grml.agent boot [--iso PATH] | create_alpine_image [alpine_iso_path]"
         exit 1
       end
     end
   
     class Act
       getter arguments : Array(String)
+      getter boot_iso_path : String?
       
       def initialize(@arguments : Array(String) = [] of String)
+        @boot_iso_path = nil
         validate_arguments
       end
       
@@ -181,7 +143,7 @@ module GRML
       end
       
       def run : Nil
-        agent = GRML::Agent.new
+        agent = GRML::Agent.new(@boot_iso_path)
       
         Signal::INT.trap { agent.terminate && exit }
         Signal::TERM.trap { agent.terminate && exit }
@@ -199,9 +161,13 @@ module GRML
     
       class Boot < Act
         def validate_arguments
-          unless @arguments.empty?
-            STDERR.puts "Usage: grml.agent boot"
-            exit 1
+          if @arguments.size == 2 && @arguments[0] == "--iso"
+            @boot_iso_path = @arguments[1]
+          else
+            unless @arguments.empty?
+              STDERR.puts "Usage: grml.agent boot [--iso PATH]"
+              exit 1
+            end
           end
         end
         
