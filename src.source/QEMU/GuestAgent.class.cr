@@ -37,7 +37,7 @@ private def wait_for_command(
   loop do
     data = request(socket, "guest-exec-status", {"pid" => JSON::Any.new(pid)}).as_h
     return command_result(data) if data["exited"].as_bool
-    raise Agent::TimeoutError.new("Guest command timed out after #{timeout}") if Time.instant >= deadline
+    raise Interaction::TimeoutError.new("Guest command timed out after #{timeout}") if Time.instant >= deadline
     sleep 100.milliseconds
   end
 end

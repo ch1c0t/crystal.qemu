@@ -9,75 +9,6 @@ require "global-amqp_channel"
 
 module QEMU
 
-  class Agent
-    module Execute
-      def execute(command : String, timeout : Time::Span = 30.seconds) : CommandResult
-        GuestAgent.new(@vm.guest_agent_path).execute(command, timeout)
-      end
-    end
-  
-    module WaitForText
-      def wait_for_text(
-        text : String,
-        timeout : Time::Span = 60.seconds,
-        region : Symbol = :full_screen
-      ) : XephyrContext::State
-        wait_for_text(text, timeout, XephyrContext::ScreenRegion.from_symbol(region))
-      end
-      
-      def wait_for_text(
-        text : String,
-        timeout : Time::Span = 60.seconds,
-        region : XephyrContext::ScreenRegion = XephyrContext::ScreenRegion.full_screen,
-      ) : XephyrContext::State
-        @context.wait_until(text, timeout, region)
-      rescue error : RuntimeError
-        raise error unless error.message == "Timed out waiting for #{text.inspect}"
-        raise TimeoutError.new(error.message || "Timed out waiting for text")
-      end
-    end
-  
-    class TimeoutError < Exception
-    end
-    
-    getter vm : VM
-    getter context : XephyrContext
-    getter context_process : ProcessSupervisor
-    
-    def initialize(@vm : VM)
-      display = @vm.display
-      raise "QEMU VM did not provide a display" if display.nil?
-    
-      @context_process = ProcessSupervisor.new(
-        "xephyr.context",
-        {
-          "DISPLAY_TARGET" => display,
-          "XEPHYR_LOG_LEVEL" => ENV.fetch("XEPHYR_LOG_LEVEL", "INFO"),
-        }
-      )
-      @context = XephyrContext.new(display, Global.amqp_channel)
-    end
-    
-    include WaitForText
-    include Execute
-    
-    def terminate : Bool
-      result = false
-    
-      begin
-        @context.stop
-      ensure
-        begin
-          @context_process.terminate
-        ensure
-          result = @vm.terminate
-        end
-      end
-    
-      result
-    end
-  end
-
   struct CommandResult
     getter exit_code : Int32
     getter stdout : String
@@ -131,7 +62,7 @@ module QEMU
       loop do
         data = request(socket, "guest-exec-status", {"pid" => JSON::Any.new(pid)}).as_h
         return command_result(data) if data["exited"].as_bool
-        raise Agent::TimeoutError.new("Guest command timed out after #{timeout}") if Time.instant >= deadline
+        raise Interaction::TimeoutError.new("Guest command timed out after #{timeout}") if Time.instant >= deadline
         sleep 100.milliseconds
       end
     end
@@ -201,6 +132,75 @@ module QEMU
       absolute_path
     rescue error : File::Error
       raise "Cannot read ISO #{path}: #{error.message}"
+    end
+  end
+
+  class Interaction
+    module Execute
+      def execute(command : String, timeout : Time::Span = 30.seconds) : CommandResult
+        GuestAgent.new(@vm.guest_agent_path).execute(command, timeout)
+      end
+    end
+  
+    module WaitForText
+      def wait_for_text(
+        text : String,
+        timeout : Time::Span = 60.seconds,
+        region : Symbol = :full_screen
+      ) : XephyrContext::State
+        wait_for_text(text, timeout, XephyrContext::ScreenRegion.from_symbol(region))
+      end
+      
+      def wait_for_text(
+        text : String,
+        timeout : Time::Span = 60.seconds,
+        region : XephyrContext::ScreenRegion = XephyrContext::ScreenRegion.full_screen,
+      ) : XephyrContext::State
+        @context.wait_until(text, timeout, region)
+      rescue error : RuntimeError
+        raise error unless error.message == "Timed out waiting for #{text.inspect}"
+        raise TimeoutError.new(error.message || "Timed out waiting for text")
+      end
+    end
+  
+    class TimeoutError < Exception
+    end
+    
+    getter vm : VM
+    getter context : XephyrContext
+    getter context_process : ProcessSupervisor
+    
+    def initialize(@vm : VM)
+      display = @vm.display
+      raise "QEMU VM did not provide a display" if display.nil?
+    
+      @context_process = ProcessSupervisor.new(
+        "xephyr.context",
+        {
+          "DISPLAY_TARGET" => display,
+          "XEPHYR_LOG_LEVEL" => ENV.fetch("XEPHYR_LOG_LEVEL", "INFO"),
+        }
+      )
+      @context = XephyrContext.new(display, Global.amqp_channel)
+    end
+    
+    include WaitForText
+    include Execute
+    
+    def terminate : Bool
+      result = false
+    
+      begin
+        @context.stop
+      ensure
+        begin
+          @context_process.terminate
+        ensure
+          result = @vm.terminate
+        end
+      end
+    
+      result
     end
   end
 
