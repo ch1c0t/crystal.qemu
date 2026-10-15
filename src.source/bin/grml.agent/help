@@ -2,6 +2,7 @@ grml.agent boots GRML and provides an interactive command line.
 
 Usage:
   grml.agent boot [--iso PATH]
+  grml.agent tmux [--iso PATH]
   grml.agent prepare_alpine_bundle [alpine_branch]
   grml.agent create_alpine_image [alpine_iso_path]
   grml.agent --help
@@ -10,6 +11,9 @@ Usage:
 The boot command discovers a GRML ISO in ./cdrom/ (or QEMU_ISO_DIR) unless
 --iso is supplied. It advances through GRML boot prompts, waits for the
 root@grml shell prompt, and keeps the VM running until Ctrl-C.
+
+The tmux command boots GRML, waits for the shell prompt, types "tmux", and
+presses Enter. It keeps the VM running until Ctrl-C.
 
 The prepare_alpine_bundle command downloads Alpine packages and bootstrap tools
 into the QEMU shared directory. The default branch is latest-stable; specify a
