@@ -142,6 +142,24 @@ module QEMU
       end
     end
   
+    module Terminate
+      def terminate : Bool
+        result = false
+      
+        begin
+          @context.stop
+        ensure
+          begin
+            @context_process.terminate
+          ensure
+            result = @vm.terminate
+          end
+        end
+      
+        result
+      end
+    end
+  
     module Type
       # Type text into the guest's active window using xdotool.
       # delay is the number of milliseconds between simulated keystrokes.
@@ -209,22 +227,7 @@ module QEMU
     include Type
     include WaitForText
     include Execute
-    
-    def terminate : Bool
-      result = false
-    
-      begin
-        @context.stop
-      ensure
-        begin
-          @context_process.terminate
-        ensure
-          result = @vm.terminate
-        end
-      end
-    
-      result
-    end
+    include Terminate
   end
 
   class ProcessSupervisor
@@ -322,16 +325,6 @@ module QEMU
           cmd_parts.join(" ")
         end
         
-        def disk_options : Array(String)
-          return [] of String unless Dir.exists?("./disks")
-        
-          Dir.glob("./disks/*").sort.flat_map do |path|
-            next [] of String unless File.file?(path)
-        
-            ["-drive", "file=#{File.expand_path(path)},if=virtio"]
-          end
-        end
-        
         def shared_path_options
           [
             "-fsdev", "local,security_model=mapped,id=shared0,path=#{@shared_path}",
@@ -345,6 +338,16 @@ module QEMU
             "-device", "virtio-serial-pci",
             "-device", "virtserialport,chardev=qga0,name=org.qemu.guest_agent.0",
           ]
+        end
+        
+        def disk_options : Array(String)
+          return [] of String unless Dir.exists?("./disks")
+        
+          Dir.glob("./disks/*").sort.flat_map do |path|
+            next [] of String unless File.file?(path)
+        
+            ["-drive", "file=#{File.expand_path(path)},if=virtio"]
+          end
         end
       end
     
