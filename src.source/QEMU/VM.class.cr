@@ -13,11 +13,13 @@ def initialize(
   @name = nil,
   @memory = "6G",
   @cpus = 2,
-  @shared_path = "#{ENV["HOME"]}/shared/",
+  shared_path : String? = nil,
   @monitor_path = "/tmp/qmp-guest-#{Process.pid}-#{Random.rand(100000)}.sock",
   @guest_agent_path = "/tmp/qga-guest-#{Process.pid}-#{Random.rand(100000)}.sock",
   auto_start : Bool = true
 )
+  @shared_path = shared_path || (File.exists?("./shared") ? "./shared/" : "#{ENV["HOME"]}/shared/")
+
   if auto_start
     unless start
       raise "Failed to initialize and start QEMU guest"
