@@ -32,7 +32,7 @@ def prepare_alpine_bundle(branch : String = "latest-stable") : Nil
     "bdd044e0fd6cc388c5e571e1093efa5f35f7767cc5aa338b0a2576a429009a62 apk.static | sha256sum -c -"
   )
   run_bundle_command("chmod +x #{tools}/apk.static")
-  fetch_alpine_packages(packages, mirror, branch)
+  fetch_alpine_packages(packages, tools, mirror, branch)
   build_local_repository(repository, packages, mirror, branch, arch)
   write_bundle_manifest(bundle, repository, branch)
   Log.info { "Prepared Alpine offline bundle in #{@vm.shared_path}/alpine-bundle" }
@@ -46,8 +46,8 @@ private def verify_bundle_architecture : Nil
   end
 end
 
-private def fetch_alpine_packages(packages : String, mirror : String, branch : String) : Nil
-  command = "#{packages}/../..//tools/apk.static " +
+private def fetch_alpine_packages(packages : String, tools : String, mirror : String, branch : String) : Nil
+  command = "#{tools}/apk.static " +
     "--repository #{mirror}/#{branch}/main " +
     "--repository #{mirror}/#{branch}/community " +
     "fetch --recursive --output #{packages} alpine-base alpine-keys"
