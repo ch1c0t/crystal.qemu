@@ -5,10 +5,12 @@ def prepare_alpine_bundle(branch : String = "latest-stable") : Nil
 
   bundle = "/mnt/shared/alpine-bundle"
   repository = "#{bundle}/repository"
+  packages = "#{repository}/packages"
   tools = "#{bundle}/tools"
+  arch = "x86_64"
   mirror = "https://dl-cdn.alpinelinux.org/alpine"
 
-  run_bundle_command("mkdir -p #{tools} #{repository}")
+  run_bundle_command("mkdir -p #{tools} #{packages} #{repository}/main/#{arch} #{repository}/community/#{arch}")
   verify_bundle_architecture
 
   run_bundle_command(
@@ -30,8 +32,8 @@ def prepare_alpine_bundle(branch : String = "latest-stable") : Nil
     "bdd044e0fd6cc388c5e571e1093efa5f35f7767cc5aa338b0a2576a429009a62 apk.static | sha256sum -c -"
   )
   run_bundle_command("chmod +x #{tools}/apk.static")
-  fetch_alpine_packages(repository, mirror, branch)
-  sign_local_repository(repository, bundle)
+  fetch_alpine_packages(packages, mirror, branch)
+  build_local_repository(repository, packages, mirror, branch, arch)
   write_bundle_manifest(bundle, repository, branch)
   Log.info { "Prepared Alpine offline bundle in #{@vm.shared_path}/alpine-bundle" }
 end
@@ -44,22 +46,20 @@ private def verify_bundle_architecture : Nil
   end
 end
 
-private def fetch_alpine_packages(repository : String, mirror : String, branch : String) : Nil
-  command = "#{repository}/../tools/apk.static " +
+private def fetch_alpine_packages(packages : String, mirror : String, branch : String) : Nil
+  command = "#{packages}/../..//tools/apk.static " +
     "--repository #{mirror}/#{branch}/main " +
     "--repository #{mirror}/#{branch}/community " +
-    "fetch --recursive --output #{repository} alpine-base alpine-keys"
+    "fetch --recursive --output #{packages} alpine-base alpine-keys"
   run_bundle_command(command)
 end
 
-private def sign_local_repository(repository : String, bundle : String) : Nil
-  key = "#{bundle}/repository-signing.rsa"
-  command = "openssl genrsa -out #{key} 2048 && " +
-    "openssl rsa -in #{key} -pubout -out #{repository}/repository-signing.rsa.pub && " +
-    "cd #{repository} && " +
-    "../tools/apk.static index --sign #{key} --output APKINDEX.tar.gz ./*.apk && " +
-    "rm -f #{key}"
-  run_bundle_command(command)
+private def build_local_repository(repository : String, packages : String, mirror : String, branch : String, arch : String) : Nil
+  main = "#{repository}/main/#{arch}"
+  community = "#{repository}/community/#{arch}"
+  run_bundle_command("curl -fsSL #{mirror}/#{branch}/main/#{arch}/APKINDEX.tar.gz -o #{main}/APKINDEX.tar.gz")
+  run_bundle_command("curl -fsSL #{mirror}/#{branch}/community/#{arch}/APKINDEX.tar.gz -o #{community}/APKINDEX.tar.gz")
+  run_bundle_command("cp #{packages}/*.apk #{main}/ && cp #{packages}/*.apk #{community}/")
 end
 
 private def write_bundle_manifest(bundle : String, repository : String, branch : String) : Nil
