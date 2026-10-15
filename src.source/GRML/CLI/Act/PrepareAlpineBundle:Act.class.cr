@@ -1,4 +1,4 @@
-@branch : String
+@branch : String = "latest-stable"
 
 def validate_arguments
   if @arguments.size > 1
