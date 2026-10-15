@@ -36,7 +36,7 @@ def prepare_alpine_bundle(branch : String = "latest-stable") : Nil
   extract_alpine_keys(tools, keys)
   run_bundle_command("mkdir -p #{apk_root}/etc/apk/keys && cp #{keys}/*.rsa.pub #{apk_root}/etc/apk/keys/")
   fetch_alpine_packages(packages, apk_root, tools, mirror, branch)
-  build_local_repository(packages, tools)
+  build_local_repository(packages, tools, keys)
   verify_offline_repository(repository, bundle, tools, keys, arch)
   write_bundle_manifest(bundle, repository, branch)
   Log.info { "Prepared Alpine offline bundle in #{@vm.shared_path}/alpine-bundle" }
@@ -71,10 +71,10 @@ private def fetch_alpine_packages(packages : String, apk_root : String, tools : 
   run_bundle_command(command)
 end
 
-private def build_local_repository(packages : String, tools : String) : Nil
+private def build_local_repository(packages : String, tools : String, keys : String) : Nil
   index = "#{packages}/APKINDEX.tar.gz"
   run_bundle_command(
-    "cd #{packages} && #{tools}/apk.static index --output #{index} *.apk"
+    "cd #{packages} && #{tools}/apk.static --keys-dir #{keys} index --output #{index} *.apk"
   )
 end
 
