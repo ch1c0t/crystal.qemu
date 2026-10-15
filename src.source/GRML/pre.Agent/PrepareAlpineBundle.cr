@@ -12,9 +12,8 @@ def prepare_alpine_bundle(branch : String = "latest-stable") : Nil
   apk_root = "#{bundle}/apk-root"
   mirror = "https://dl-cdn.alpinelinux.org/alpine"
 
-  run_bundle_command("rm -rf #{repository} #{apk_root} && mkdir -p #{tools} #{keys} #{packages} #{apk_root}")
   verify_bundle_architecture
-
+  run_bundle_command("rm -rf #{repository} #{apk_root} #{keys} #{tools} && mkdir -p #{tools} #{keys} #{packages} #{apk_root}")
   run_bundle_command(
     "cd #{tools} && curl -fsSL " +
     "https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/v0.14.0/alpine-chroot-install " +
@@ -38,6 +37,7 @@ def prepare_alpine_bundle(branch : String = "latest-stable") : Nil
   run_bundle_command("mkdir -p #{apk_root}/etc/apk/keys && cp #{keys}/*.rsa.pub #{apk_root}/etc/apk/keys/")
   fetch_alpine_packages(packages, apk_root, tools, mirror, branch)
   build_local_repository(packages, tools)
+  verify_offline_repository(repository, bundle, tools, keys, arch)
   write_bundle_manifest(bundle, repository, branch)
   Log.info { "Prepared Alpine offline bundle in #{@vm.shared_path}/alpine-bundle" }
 end
@@ -76,6 +76,16 @@ private def build_local_repository(packages : String, tools : String) : Nil
   run_bundle_command(
     "cd #{packages} && #{tools}/apk.static index --output #{index} *.apk"
   )
+end
+
+private def verify_offline_repository(repository : String, bundle : String, tools : String, keys : String, arch : String) : Nil
+  test_root = "#{bundle}/verify-root"
+  run_bundle_command("rm -rf #{test_root} && mkdir -p #{test_root}/etc/apk/keys && cp #{keys}/*.rsa.pub #{test_root}/etc/apk/keys/")
+  command = "#{tools}/apk.static --root #{test_root} --keys-dir /etc/apk/keys " +
+    "--allow-untrusted --no-network --arch #{arch} --repository #{repository} " +
+    "add --initdb alpine-base alpine-keys"
+  run_bundle_command(command)
+  run_bundle_command("rm -rf #{test_root}")
 end
 
 private def write_bundle_manifest(bundle : String, repository : String, branch : String) : Nil
