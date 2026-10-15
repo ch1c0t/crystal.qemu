@@ -34,9 +34,7 @@ module GRML
   
     module CreateAlpineImage
       def create_alpine_image(iso_path : String? = nil) : Nil
-        iso = QEMU::ISOResolver.resolve("alpine", iso_path)
-        Log.info { "Found Alpine Linux ISO: #{iso}" }
-        raise "Alpine image creation workflow is not implemented yet"
+        raise "Alpine image creation workflow is not implemented yet. Should GRML create Alpine image?"
       end
     end
   
@@ -103,6 +101,7 @@ module GRML
     def initialize(iso_path : String? = nil)
       resolved_iso = QEMU::ISOResolver.resolve("grml", iso_path)
       @vm = QEMU::VM.new(iso_path: resolved_iso)
+      Log.info { "Started a QEMU::VM with #{@vm.iso_path}" }
       @interaction = QEMU::Agent.new(@vm)
       @terminated = false
     end

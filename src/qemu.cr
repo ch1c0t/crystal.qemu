@@ -187,7 +187,8 @@ module QEMU
         raise "No #{distribution} ISO found in #{directory}; pass an ISO path explicitly"
       else
         names = candidates.map { |candidate| File.basename(candidate) }.join(", ")
-        raise "Multiple #{distribution} ISOs found in #{directory}: #{names}; pass an ISO path explicitly"
+        Log.debug {"Multiple #{distribution} ISOs found in #{directory}: #{names}"}
+        validate(candidates.first)
       end
     end
     
