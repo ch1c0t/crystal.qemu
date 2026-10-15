@@ -19,6 +19,7 @@ def initialize(@vm : VM)
   @context = XephyrContext.new(display, Global.amqp_channel)
 end
 
+include Type
 include WaitForText
 include Execute
 
