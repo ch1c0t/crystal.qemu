@@ -64,7 +64,7 @@ private def extract_alpine_keys(tools : String, keys : String) : Nil
 end
 
 private def fetch_alpine_packages(packages : String, apk_root : String, tools : String, mirror : String, branch : String) : Nil
-  command = "#{tools}/apk.static --root #{apk_root} --keys-dir /etc/apk/keys --no-cache --arch x86_64 " +
+  command = "#{tools}/apk.static --root #{apk_root} --keys-dir #{apk_root}/etc/apk/keys --no-cache --arch x86_64 " +
     "--repository #{mirror}/#{branch}/main " +
     "--repository #{mirror}/#{branch}/community " +
     "fetch --recursive --output #{packages} alpine-base alpine-keys"
@@ -81,7 +81,7 @@ end
 private def verify_offline_repository(repository : String, bundle : String, tools : String, keys : String, arch : String) : Nil
   test_root = "#{bundle}/verify-root"
   run_bundle_command("rm -rf #{test_root} && mkdir -p #{test_root}/etc/apk/keys && cp #{keys}/*.rsa.pub #{test_root}/etc/apk/keys/")
-  command = "#{tools}/apk.static --root #{test_root} --keys-dir /etc/apk/keys " +
+  command = "#{tools}/apk.static --root #{test_root} --keys-dir #{test_root}/etc/apk/keys " +
     "--allow-untrusted --no-network --arch #{arch} --repository #{repository} " +
     "add --initdb alpine-base alpine-keys"
   run_bundle_command(command)
