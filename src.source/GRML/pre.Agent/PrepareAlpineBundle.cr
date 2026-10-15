@@ -62,7 +62,7 @@ private def extract_alpine_keys(tools : String, keys : String) : Nil
 end
 
 private def fetch_alpine_packages(packages : String, tools : String, keys : String, mirror : String, branch : String) : Nil
-  command = "#{tools}/apk.static --keys-dir #{keys} --update-cache --arch x86_64 " +
+  command = "#{tools}/apk.static --keys-dir #{keys} --no-cache --arch x86_64 " +
     "--repository #{mirror}/#{branch}/main " +
     "--repository #{mirror}/#{branch}/community " +
     "fetch --recursive --output #{packages} alpine-base alpine-keys"
