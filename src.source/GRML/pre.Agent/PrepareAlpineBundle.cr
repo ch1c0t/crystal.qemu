@@ -7,10 +7,11 @@ def prepare_alpine_bundle(branch : String = "latest-stable") : Nil
   repository = "#{bundle}/repository"
   packages = "#{repository}/packages"
   tools = "#{bundle}/tools"
+  keys = "#{bundle}/keys"
   arch = "x86_64"
   mirror = "https://dl-cdn.alpinelinux.org/alpine"
 
-  run_bundle_command("mkdir -p #{tools} #{packages} #{repository}/main/#{arch} #{repository}/community/#{arch}")
+  run_bundle_command("mkdir -p #{tools} #{keys} #{packages} #{repository}/main/#{arch} #{repository}/community/#{arch}")
   verify_bundle_architecture
 
   run_bundle_command(
@@ -32,7 +33,8 @@ def prepare_alpine_bundle(branch : String = "latest-stable") : Nil
     "bdd044e0fd6cc388c5e571e1093efa5f35f7767cc5aa338b0a2576a429009a62 apk.static | sha256sum -c -"
   )
   run_bundle_command("chmod +x #{tools}/apk.static")
-  fetch_alpine_packages(packages, tools, mirror, branch)
+  extract_alpine_keys(tools, keys)
+  fetch_alpine_packages(packages, tools, keys, mirror, branch)
   build_local_repository(repository, packages, mirror, branch, arch)
   write_bundle_manifest(bundle, repository, branch)
   Log.info { "Prepared Alpine offline bundle in #{@vm.shared_path}/alpine-bundle" }
@@ -46,8 +48,21 @@ private def verify_bundle_architecture : Nil
   end
 end
 
-private def fetch_alpine_packages(packages : String, tools : String, mirror : String, branch : String) : Nil
-  command = "#{tools}/apk.static " +
+private def extract_alpine_keys(tools : String, keys : String) : Nil
+  script = "#{tools}/alpine-chroot-install"
+  command = "awk '/^ALPINE_KEYS=/,/^\\x27$/ { if (NR > 1 && $0 !~ /^ALPINE_KEYS=/ && $0 !~ /^\\x27$/) print }' #{script} | " +
+    "while IFS= read -r line; do " +
+    "id=\${line%%:*}; content=\${line#*:}; " +
+    "[ -n \"\${id}\" ] || continue; " +
+    "file=#{keys}/alpine-devel@lists.alpinelinux.org-\${id}.rsa.pub; " +
+    "printf '%s\\n' '-----BEGIN PUBLIC KEY-----' > \"\${file}\"; " +
+    "printf '%b\\n' \"\${content}\" >> \"\${file}\"; " +
+    "printf '%s\\n' '-----END PUBLIC KEY-----' >> \"\${file}\"; done"
+  run_bundle_command(command)
+end
+
+private def fetch_alpine_packages(packages : String, tools : String, keys : String, mirror : String, branch : String) : Nil
+  command = "#{tools}/apk.static --keys-dir #{keys} " +
     "--repository #{mirror}/#{branch}/main " +
     "--repository #{mirror}/#{branch}/community " +
     "fetch --recursive --output #{packages} alpine-base alpine-keys"
