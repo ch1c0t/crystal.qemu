@@ -26,7 +26,13 @@ module GRML
       
         Log.info { "QEMU Guest Agent is operational" }
         Log.info { "Setting GRML console font size to 12x24" }
-        result = @interaction.execute("sed -i 's/^FONTSIZE=.*/FONTSIZE=\\\"12x24\\\"/' /etc/default/console-setup && grep -q '^FONTSIZE=\\\"12x24\\\"        Log.info { "Verifying GRML shared directory" }
+        result = @interaction.execute("sed -i 's|^FONTSIZE=.*|FONTSIZE=\"12x24\"|' /etc/default/console-setup && grep -Fqx 'FONTSIZE=\"12x24\"' /etc/default/console-setup && setupcon")
+        unless result.success?
+          raise "Could not configure GRML console font size (exit=#{result.exit_code}, stderr=#{result.stderr.inspect})"
+        end
+        Log.info { "GRML console font size set to 12x24" }
+
+        Log.info { "Verifying GRML shared directory" }
         verify_shared_directory
         Log.info { "GRML shared directory is operational" }
         Log.info { "Press Ctrl-C to terminate the VM." }
