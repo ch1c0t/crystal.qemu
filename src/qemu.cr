@@ -314,11 +314,22 @@ module QEMU
             "-vga", "virtio",
             *shared_path_options,
             *guest_agent_options,
+            *disk_options,
             "-cdrom", @iso_path,
             "-qmp", "unix:#{@monitor_path},server,nowait"
           ])
         
           cmd_parts.join(" ")
+        end
+        
+        def disk_options : Array(String)
+          return [] of String unless Dir.exists?("./disks")
+        
+          Dir.glob("./disks/*").sort.flat_map do |path|
+            next [] of String unless File.file?(path)
+        
+            ["-drive", "file=#{File.expand_path(path)},if=virtio"]
+          end
         end
         
         def shared_path_options

@@ -13,6 +13,7 @@ def build_qemu_command : String
     "-vga", "virtio",
     *shared_path_options,
     *guest_agent_options,
+    *disk_options,
     "-cdrom", @iso_path,
     "-qmp", "unix:#{@monitor_path},server,nowait"
   ])
@@ -33,4 +34,14 @@ def guest_agent_options
     "-device", "virtio-serial-pci",
     "-device", "virtserialport,chardev=qga0,name=org.qemu.guest_agent.0",
   ]
+end
+
+def disk_options : Array(String)
+  return [] of String unless Dir.exists?("./disks")
+
+  Dir.glob("./disks/*").sort.flat_map do |path|
+    next [] of String unless File.file?(path)
+
+    ["-drive", "file=#{File.expand_path(path)},if=virtio"]
+  end
 end
