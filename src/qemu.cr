@@ -391,7 +391,7 @@ module QEMU
       auto_start : Bool = true
     )
       @shared_path = shared_path || (File.exists?("./shared") ? "./shared/" : "#{ENV["HOME"]}/shared/")
-
+    
       if auto_start
         unless start
           raise "Failed to initialize and start QEMU guest"
