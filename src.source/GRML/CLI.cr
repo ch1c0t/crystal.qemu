@@ -7,8 +7,10 @@ def self.run(arguments : Array(String) = ARGV.dup) : Nil
     Act::Boot.new(args).run
   when "create_alpine_image"
     Act::CreateAlpineImage.new(args).run
+  when "prepare_alpine_bundle"
+    Act::PrepareAlpineBundle.new(args).run
   else
-    STDERR.puts "Usage: grml.agent boot [--iso PATH] | create_alpine_image [alpine_iso_path]"
+    STDERR.puts "Usage: grml.agent boot [--iso PATH] | prepare_alpine_bundle [alpine_branch] | create_alpine_image [alpine_iso_path]"
     exit 1
   end
 end
