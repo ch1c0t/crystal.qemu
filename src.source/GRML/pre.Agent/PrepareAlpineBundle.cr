@@ -1,5 +1,5 @@
 def prepare_alpine_bundle(branch : String = "latest-stable") : Nil
-  unless branch.matches(/\A[a-zA-Z0-9._-]+\z/)
+  unless branch =~ /\A[a-zA-Z0-9._-]+\z/
     raise "Invalid Alpine branch: #{branch.inspect}"
   end
 
