@@ -22,7 +22,13 @@ module Boot
   def boot : Nil
     Log.info { "Waiting for Alpine login prompt" }
     @interaction.wait_for_text("login:", 180.seconds, :third_quadrant)
-    Log.info { "Alpine login prompt detected" }
+    Log.info { "Alpine login prompt detected; logging in as root to configure the console font" }
+    @interaction.type("root")
+    @vm.send_key("ret")
+    @interaction.wait_for_text("localhost:~#", 30.seconds, :third_quadrant)
+    @interaction.type("setfont ter-132n")
+    @vm.send_key("ret")
+    Log.info { "Requested larger Alpine console font (ter-132n)" }
   end
 end
 
