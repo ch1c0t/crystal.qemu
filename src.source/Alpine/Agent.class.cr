@@ -21,7 +21,7 @@ end
 module Boot
   def boot : Nil
     Log.info { "Waiting for Alpine login prompt" }
-    @interaction.wait_for_text("login:", 180.seconds, :bottom_tenth)
+    @interaction.wait_for_text("login:", 180.seconds, :third_quadrant)
     Log.info { "Alpine login prompt detected" }
   end
 end
