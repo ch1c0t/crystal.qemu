@@ -28,7 +28,11 @@ module Alpine
         return true if @terminated
         Log.info { "Terminating Alpine agent" }
         @terminated = @interaction.terminate
-        @terminated ? Log.info { "Alpine agent terminated" } : Log.error { "Alpine agent reported a shutdown failure" }
+        if @terminated
+          Log.info { "Alpine agent terminated" }
+        else
+          Log.error { "Alpine agent reported a shutdown failure" }
+        end
         @terminated
       end
     end
