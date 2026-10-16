@@ -4,10 +4,10 @@ version: 0.0.0
 authors:
 - Anatoly Chernov <chertoly@gmail.com>
 targets:
-  grml.agent:
-    main: src/bin/grml.agent.cr
   alpine.agent:
     main: src/bin/alpine.agent.cr
+  grml.agent:
+    main: src/bin/grml.agent.cr
 crystal: ">= 1.15.1"
 dependencies:
   xephyr_context:
