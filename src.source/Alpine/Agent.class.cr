@@ -2,11 +2,18 @@ getter vm : QEMU::VM
 getter interaction : QEMU::Interaction
 
 def initialize
+  iso = File.expand_path(File.join(ENV.fetch("HOME"), "Downloads", "ISOs", "alpine-extended-3.24.2-x86_64.iso"))
+  iso_path = File.file?(iso) && File.size(iso) > 0 ? iso : nil
   disks = Dir.exists?("./disks") ? Dir.glob("./disks/*").select { |path| File.file?(path) && File.size(path) > 0 }.sort : [] of String
-  raise "No non-empty virtual disks found in ./disks; install Alpine first" if disks.empty?
 
-  Log.info { "Booting Alpine from #{disks.first}" }
-  @vm = QEMU::VM.new(iso_path: nil, name: "Alpine")
+  if iso_path
+    Log.info { "Booting Alpine ISO from #{iso_path}" }
+  elsif disks.empty?
+    raise "Alpine ISO not found at #{iso}; no non-empty virtual disks found in ./disks"
+  else
+    Log.info { "Booting Alpine from disk #{disks.first}" }
+  end
+  @vm = QEMU::VM.new(iso_path: iso_path, name: "Alpine")
   @interaction = QEMU::Interaction.new(@vm)
   @terminated = false
 end
