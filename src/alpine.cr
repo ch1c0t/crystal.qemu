@@ -30,9 +30,9 @@ module Alpine
         @interaction.type("root")
         @vm.send_key("ret")
         @interaction.wait_for_text("You can setup the system", 30.seconds, :third_quadrant)
-        @interaction.type("setfont ter-132n")
+        @interaction.type("apk add font-terminus && setfont /usr/share/consolefonts/ter-132n.psf.gz")
         @vm.send_key("ret")
-        Log.info { "Sent Alpine console font configuration command (ter-132n)" }
+        Log.info { "Requested font-terminus installation and console font configuration (ter-132n)" }
       end
     end
 
