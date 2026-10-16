@@ -318,14 +318,22 @@ module QEMU
             *shared_path_options,
             *guest_agent_options,
             *disk_options,
-            "-cdrom", @iso_path,
+            *iso_boot_options,
             "-qmp", "unix:#{@monitor_path},server,nowait"
           ])
         
           cmd_parts.join(" ")
         end
         
-        def shared_path_options
+        def iso_boot_options : Array(String)
+        if iso_path = @iso_path
+          ["-cdrom", iso_path]
+        else
+          ["-boot", "order=c"]
+        end
+      end
+      
+      def shared_path_options
           [
             "-fsdev", "local,security_model=mapped,id=shared0,path=#{@shared_path}",
             "-device", "virtio-9p-pci,fsdev=shared0,mount_tag=shared0",
@@ -410,7 +418,7 @@ module QEMU
     property name : String?
     property memory : String
     property cpus : Int32
-    property iso_path : String
+    property iso_path : String?
     property shared_path : String
     property monitor_path : String
     property guest_agent_path : String
@@ -418,7 +426,7 @@ module QEMU
     getter display : String? = nil
     
     def initialize(
-      @iso_path : String,
+      @iso_path : String? = nil,
       @name = nil,
       @memory = "6G",
       @cpus = 2,

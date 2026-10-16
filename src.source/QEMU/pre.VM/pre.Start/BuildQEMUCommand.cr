@@ -14,11 +14,19 @@ def build_qemu_command : String
     *shared_path_options,
     *guest_agent_options,
     *disk_options,
-    "-cdrom", @iso_path,
+    *iso_boot_options,
     "-qmp", "unix:#{@monitor_path},server,nowait"
   ])
 
   cmd_parts.join(" ")
+end
+
+def iso_boot_options : Array(String)
+  if iso_path = @iso_path
+    ["-cdrom", iso_path]
+  else
+    ["-boot", "order=c"]
+  end
 end
 
 def shared_path_options

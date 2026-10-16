@@ -1,0 +1,20 @@
+HELP_MESSAGE = <<-S
+alpine.agent boots an installed Alpine Linux virtual disk.
+
+Usage:
+  alpine.agent boot
+  alpine.agent --help
+  alpine.agent --version
+
+The boot command attaches regular files from ./disks/ to QEMU, boots from disk,
+waits for the Alpine login prompt, and keeps the VM running until Ctrl-C.
+Install a bootable Alpine disk before running this command. If multiple disks
+exist, QEMU attaches them in sorted filename order.
+
+Logging:
+  XEPHYR_LOG_LEVEL=INFO|DEBUG|TRACE (default: INFO)
+S
+
+def print_help
+  puts HELP_MESSAGE
+end

@@ -1,7 +1,7 @@
 property name : String?
 property memory : String
 property cpus : Int32
-property iso_path : String
+property iso_path : String?
 property shared_path : String
 property monitor_path : String
 property guest_agent_path : String
@@ -9,7 +9,7 @@ property guest_agent_path : String
 getter display : String? = nil
 
 def initialize(
-  @iso_path : String,
+  @iso_path : String? = nil,
   @name = nil,
   @memory = "6G",
   @cpus = 2,
