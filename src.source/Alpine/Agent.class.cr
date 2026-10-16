@@ -25,10 +25,10 @@ module Boot
     Log.info { "Alpine login prompt detected; logging in as root to configure the console font" }
     @interaction.type("root")
     @vm.send_key("ret")
-    @interaction.wait_for_text("localhost:~#", 30.seconds, :third_quadrant)
+    @interaction.wait_for_text("You can setup the system", 30.seconds, :third_quadrant)
     @interaction.type("setfont ter-132n")
     @vm.send_key("ret")
-    Log.info { "Requested larger Alpine console font (ter-132n)" }
+    Log.info { "Sent Alpine console font configuration command (ter-132n)" }
   end
 end
 
