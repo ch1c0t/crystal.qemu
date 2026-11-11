@@ -15,6 +15,8 @@ end
 
 @recognizer : XephyrContext::TextRecognizer
 @definition : TmuxREPL::Definition
+@started = false
+@stopped = false
 
 def initialize(@agent : Agent)
   @recognizer = XephyrContext::TextRecognizer.new
@@ -33,12 +35,13 @@ def initialize(@agent : Agent)
 end
 
 def run : Nil
-  started = false
-  focus = self.class.focus?
+  Signal::INT.trap { terminate_on_signal }
+  Signal::TERM.trap { terminate_on_signal }
 
   begin
+    focus = self.class.focus?
     @definition.start(focus: focus)
-    started = true
+    @started = true
 
     if focus
       Log.info { "Alpine REPL started in session 'alpine'." }
@@ -48,10 +51,26 @@ def run : Nil
 
     @definition.serve
   ensure
-    begin
-      @definition.stop if started
-    ensure
-      @recognizer.close
-    end
+    stop
+  end
+end
+
+def stop : Nil
+  return if @stopped
+
+  @stopped = true
+  begin
+    @definition.stop if @started
+  ensure
+    @recognizer.close
+  end
+end
+
+private def terminate_on_signal : Nil
+  begin
+    stop
+  ensure
+    @agent.terminate
+    exit
   end
 end
