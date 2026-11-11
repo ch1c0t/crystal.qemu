@@ -25,7 +25,7 @@ def initialize(@agent : Agent)
       raise ArgumentError.new("Usage: ocr") unless arguments.empty?
 
       text = @recognizer.recognize(@agent.interaction.latest_state)
-      if text.empty?
+      if text.strip.empty?
         context.puts("(no text recognized)")
       else
         context.write(text)
