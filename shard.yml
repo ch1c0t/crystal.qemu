@@ -8,7 +8,7 @@ targets:
     main: src/bin/alpine.agent.cr
   grml.agent:
     main: src/bin/grml.agent.cr
-crystal: ">= 1.15.1"
+crystal: ">= 1.21.0"
 dependencies:
   xephyr_context:
     github: ch1c0t/xephyr.context
