@@ -30,7 +30,7 @@ shards:
 
   tmux_repl:
     git: https://github.com/ch1c0t/tmux-repl.git
-    version: 0.1.0+git.commit.d4bfcba3c8a5080960d23e131e1e19ce8ce84fa8
+    version: 0.1.0+git.commit.9e4e39d2b92b72d5950df8357a91af72f18807cd
 
   stumpy_core:
     git: https://github.com/stumpycr/stumpy_core.git
