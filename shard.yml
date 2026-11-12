@@ -12,8 +12,9 @@ crystal: ">= 1.21.0"
 dependencies:
   xephyr_context:
     github: ch1c0t/xephyr.context
+    branch: main
   global-amqp_channel:
     github: ch1c0t/crystal.global-amqp_channel
   tmux_repl:
     github: ch1c0t/tmux-repl
-    branch: fix-custom-host-shutdown
+    branch: main
