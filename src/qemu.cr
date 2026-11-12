@@ -223,6 +223,11 @@ module QEMU
       )
       @context = XephyrContext.new(display, Global.amqp_channel)
     end
+
+    def latest_state : XephyrContext::State
+      @context.latest_state ||
+        raise "No framebuffer snapshot has been received yet."
+    end
     
     include Type
     include WaitForText

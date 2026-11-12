@@ -6,6 +6,6 @@ def validate_arguments
 end
 
 protected def perform(agent : Alpine::Agent) : Nil
-  Log.info { "Alpine agent is running. Press Ctrl-C to terminate the VM." }
-  sleep
+  Log.info { "Alpine agent is running. Starting REPL." }
+  Alpine::REPL.new(agent).run
 end
