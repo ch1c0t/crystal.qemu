@@ -42,4 +42,7 @@ jobs:
         run: bundle exec rake
 
       - name: Run Crystal specs
+        env:
+          # The current unit specs load Global but never open an AMQP connection.
+          LAVINMQ_AMQP_UNIXSOCKET: /tmp/unused-test-amqp.sock
         run: crystal spec
