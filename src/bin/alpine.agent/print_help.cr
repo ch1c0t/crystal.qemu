@@ -7,8 +7,15 @@ Usage:
   alpine.agent --version
 
 If ~/Downloads/ISOs/alpine-extended-3.24.2-x86_64.iso exists, boot it first.
-Otherwise, attach regular files from ./disks/ and boot from disk. Waits for the
-Alpine login prompt and keeps the VM running until Ctrl-C.
+Otherwise, attach regular files from ./disks/ and boot from disk. After the
+console is configured, starts a Tmux REPL with an `ocr` command. The agent
+runs until the REPL session is closed or Ctrl-C is pressed.
+
+REPL:
+  ALPINE_AGENT_REPL_FOCUS=true|false (default: true)
+    true  Switch the current Tmux client to the REPL session.
+    false Keep the client in the boot pane; switch manually with:
+          tmux switch-client -t alpine
 
 Logging:
   XEPHYR_LOG_LEVEL=INFO|DEBUG|TRACE (default: INFO)

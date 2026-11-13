@@ -2,12 +2,16 @@ def terminate : Bool
   result = false
 
   begin
-    @context.stop
+    @text_recognition.close
   ensure
     begin
-      @context_process.terminate
+      @context.stop
     ensure
-      result = @vm.terminate
+      begin
+        @context_process.terminate
+      ensure
+        result = @vm.terminate
+      end
     end
   end
 

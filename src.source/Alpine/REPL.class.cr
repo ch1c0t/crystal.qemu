@@ -13,22 +13,24 @@ def self.focus? : Bool
   end
 end
 
-@recognizer : XephyrContext::TextRecognizer
 @definition : TmuxREPL::Definition
 @started = false
 @stopped = false
 
 def initialize(@agent : Agent)
-  @recognizer = XephyrContext::TextRecognizer.new
   @definition = TmuxREPL.define("alpine") do |repl|
     repl.on_command("ocr") do |context, arguments|
       raise ArgumentError.new("Usage: ocr") unless arguments.empty?
 
-      text = @recognizer.recognize(@agent.interaction.latest_state)
-      if text.strip.empty?
+      result = @agent.interaction.latest_ocr
+      if error = result.error
+        raise "OCR failed for frame #{result.timestamp}: #{error}"
+      end
+
+      if result.text.strip.empty?
         context.puts("(no text recognized)")
       else
-        context.write(text)
+        context.write(result.text)
       end
     end
   end
@@ -59,11 +61,7 @@ def stop : Nil
   return if @stopped
 
   @stopped = true
-  begin
-    @definition.stop if @started
-  ensure
-    @recognizer.close
-  end
+  @definition.stop if @started
 end
 
 private def terminate_on_signal : Nil

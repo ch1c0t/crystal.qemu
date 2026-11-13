@@ -147,12 +147,16 @@ module QEMU
         result = false
       
         begin
-          @context.stop
+          @text_recognition.close
         ensure
           begin
-            @context_process.terminate
+            @context.stop
           ensure
-            result = @vm.terminate
+            begin
+              @context_process.terminate
+            ensure
+              result = @vm.terminate
+            end
           end
         end
       
@@ -196,7 +200,7 @@ module QEMU
         timeout : Time::Span = 60.seconds,
         region : XephyrContext::ScreenRegion = XephyrContext::ScreenRegion.full_screen,
       ) : XephyrContext::State
-        @context.wait_until(text, timeout, region)
+        @text_recognition.wait_until(text, timeout, region)
       rescue error : RuntimeError
         raise error unless error.message == "Timed out waiting for #{text.inspect}"
         raise TimeoutError.new(error.message || "Timed out waiting for text")
@@ -209,6 +213,7 @@ module QEMU
     getter vm : VM
     getter context : XephyrContext
     getter context_process : ProcessSupervisor
+    getter text_recognition : XephyrContext::TextRecognition
     
     def initialize(@vm : VM)
       display = @vm.display
@@ -222,11 +227,16 @@ module QEMU
         }
       )
       @context = XephyrContext.new(display, Global.amqp_channel)
+      @text_recognition = XephyrContext::TextRecognition.new(@context)
     end
-
+    
     def latest_state : XephyrContext::State
       @context.latest_state ||
         raise "No framebuffer snapshot has been received yet."
+    end
+    
+    def latest_ocr(timeout : Time::Span = 10.seconds) : XephyrContext::TextRecognition::Result
+      @text_recognition.wait_for_current_state(timeout)
     end
     
     include Type
