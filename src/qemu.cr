@@ -229,12 +229,12 @@ module QEMU
       @context = XephyrContext.new(display, Global.amqp_channel)
       @text_recognition = XephyrContext::TextRecognition.new(@context)
     end
-
+    
     def latest_state : XephyrContext::State
       @context.latest_state ||
         raise "No framebuffer snapshot has been received yet."
     end
-
+    
     def latest_ocr(timeout : Time::Span = 10.seconds) : XephyrContext::TextRecognition::Result
       @text_recognition.wait_for_current_state(timeout)
     end
