@@ -121,12 +121,12 @@ private def extract_alpine_keys(tools : String, keys : String) : Nil
   script = "#{tools}/alpine-chroot-install"
   command = "awk '/^ALPINE_KEYS=/,/^\\x27$/ { if (NR > 1 && $0 !~ /^ALPINE_KEYS=/ && $0 !~ /^\\x27$/) print }' #{script} | " +
     "while IFS= read -r line; do " +
-    "id=${line%%:*}; content=${line#*:}; " +
-    "[ -n \"${id}\" ] || continue; " +
-    "file=#{keys}/alpine-devel@lists.alpinelinux.org-${id}.rsa.pub; " +
-    "printf '%s\\n' '-----BEGIN PUBLIC KEY-----' > \"${file}\"; " +
-    "printf '%b\\n' \"${content}\" >> \"${file}\"; " +
-    "printf '%s\\n' '-----END PUBLIC KEY-----' >> \"${file}\"; done"
+    "id=\${line%%:*}; content=\${line#*:}; " +
+    "[ -n \"\${id}\" ] || continue; " +
+    "file=#{keys}/alpine-devel@lists.alpinelinux.org-\${id}.rsa.pub; " +
+    "printf '%s\\n' '-----BEGIN PUBLIC KEY-----' > \"\${file}\"; " +
+    "printf '%b\\n' \"\${content}\" >> \"\${file}\"; " +
+    "printf '%s\\n' '-----END PUBLIC KEY-----' >> \"\${file}\"; done"
   run_bundle_command(command)
 end
 

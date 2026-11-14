@@ -181,12 +181,12 @@ module GRML
         script = "#{tools}/alpine-chroot-install"
         command = "awk '/^ALPINE_KEYS=/,/^\\x27$/ { if (NR > 1 && $0 !~ /^ALPINE_KEYS=/ && $0 !~ /^\\x27$/) print }' #{script} | " +
           "while IFS= read -r line; do " +
-          "id=${line%%:*}; content=${line#*:}; " +
-          "[ -n \"${id}\" ] || continue; " +
-          "file=#{keys}/alpine-devel@lists.alpinelinux.org-${id}.rsa.pub; " +
-          "printf '%s\\n' '-----BEGIN PUBLIC KEY-----' > \"${file}\"; " +
-          "printf '%b\\n' \"${content}\" >> \"${file}\"; " +
-          "printf '%s\\n' '-----END PUBLIC KEY-----' >> \"${file}\"; done"
+          "id=\${line%%:*}; content=\${line#*:}; " +
+          "[ -n \"\${id}\" ] || continue; " +
+          "file=#{keys}/alpine-devel@lists.alpinelinux.org-\${id}.rsa.pub; " +
+          "printf '%s\\n' '-----BEGIN PUBLIC KEY-----' > \"\${file}\"; " +
+          "printf '%b\\n' \"\${content}\" >> \"\${file}\"; " +
+          "printf '%s\\n' '-----END PUBLIC KEY-----' >> \"\${file}\"; done"
         run_bundle_command(command)
       end
 
@@ -372,22 +372,31 @@ module GRML
       end
     end
 
-    @definition : TmuxREPL::Definition
-    @started = false
-    @stopped = false
+    def self.run(agent : Agent) : Nil
+      definition = build_definition(agent)
+      started = false
 
-    def initialize(@agent : Agent)
-      @definition = self.class.build_definition(@agent)
-    end
-
-    def run : Nil
-      Signal::INT.trap { terminate_on_signal }
-      Signal::TERM.trap { terminate_on_signal }
+      Signal::INT.trap do
+        begin
+          definition.stop if started
+        ensure
+          agent.terminate
+          exit
+        end
+      end
+      Signal::TERM.trap do
+        begin
+          definition.stop if started
+        ensure
+          agent.terminate
+          exit
+        end
+      end
 
       begin
-        focus = self.class.focus?
-        @definition.start(focus: focus)
-        @started = true
+        focus = focus?
+        definition.start(focus: focus)
+        started = true
 
         if focus
           Log.info { "GRML REPL started in session 'grml'." }
@@ -395,25 +404,9 @@ module GRML
           Log.info { "GRML REPL started in session 'grml'; switch to it with: tmux switch-client -t grml" }
         end
 
-        @definition.serve
+        definition.serve
       ensure
-        stop
-      end
-    end
-
-    def stop : Nil
-      return if @stopped
-
-      @stopped = true
-      @definition.stop if @started
-    end
-
-    private def terminate_on_signal : Nil
-      begin
-        stop
-      ensure
-        @agent.terminate
-        exit
+        definition.stop if started
       end
     end
   end
@@ -479,7 +472,7 @@ module GRML
         
         protected def perform(agent : GRML::Agent) : Nil
           Log.info { "GRML agent is running. Starting REPL." }
-          GRML::REPL.new(agent).run
+          GRML::REPL.run(agent)
         end
       end
     

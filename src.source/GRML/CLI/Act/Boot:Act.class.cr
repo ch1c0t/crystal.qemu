@@ -11,5 +11,5 @@ end
 
 protected def perform(agent : GRML::Agent) : Nil
   Log.info { "GRML agent is running. Starting REPL." }
-  GRML::REPL.new(agent).run
+  GRML::REPL.run(agent)
 end

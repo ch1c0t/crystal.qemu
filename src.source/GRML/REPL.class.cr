@@ -64,22 +64,31 @@ class REPL
     end
   end
 
-  @definition : TmuxREPL::Definition
-  @started = false
-  @stopped = false
+  def self.run(agent : Agent) : Nil
+    definition = build_definition(agent)
+    started = false
 
-  def initialize(@agent : Agent)
-    @definition = self.class.build_definition(@agent)
-  end
-
-  def run : Nil
-    Signal::INT.trap { terminate_on_signal }
-    Signal::TERM.trap { terminate_on_signal }
+    Signal::INT.trap do
+      begin
+        definition.stop if started
+      ensure
+        agent.terminate
+        exit
+      end
+    end
+    Signal::TERM.trap do
+      begin
+        definition.stop if started
+      ensure
+        agent.terminate
+        exit
+      end
+    end
 
     begin
-      focus = self.class.focus?
-      @definition.start(focus: focus)
-      @started = true
+      focus = focus?
+      definition.start(focus: focus)
+      started = true
 
       if focus
         Log.info { "GRML REPL started in session 'grml'." }
@@ -87,25 +96,9 @@ class REPL
         Log.info { "GRML REPL started in session 'grml'; switch to it with: tmux switch-client -t grml" }
       end
 
-      @definition.serve
+      definition.serve
     ensure
-      stop
-    end
-  end
-
-  def stop : Nil
-    return if @stopped
-
-    @stopped = true
-    @definition.stop if @started
-  end
-
-  private def terminate_on_signal : Nil
-    begin
-      stop
-    ensure
-      @agent.terminate
-      exit
+      definition.stop if started
     end
   end
 end
