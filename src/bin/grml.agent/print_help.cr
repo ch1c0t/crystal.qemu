@@ -19,11 +19,18 @@ REPL commands:
   ocr
     Recognize text in the latest captured GRML display frame.
   prepare_alpine_bundle [alpine_branch]
-    Prepare or rebuild the Alpine offline bundle in /mnt/shared. The default
-    branch is latest-stable. It reports each preparation phase as it starts
-    and completes, with elapsed time. Failures identify the failing phase and
-    include the guest command diagnostics. This command can be run repeatedly
-    in the same booted GRML guest; it does not reboot the VM.
+    Prepare an immutable Alpine offline bundle in
+    /mnt/shared/alpine-bundles/runs/<run_id>. The default branch is
+    latest-stable. Each invocation creates a new UTC timestamped run directory.
+    Previous runs are preserved. A failed run retains its files and RUNNING
+    marker, but has no COMPLETE marker and does not update LATEST.
+    After successful offline verification, MANIFEST and SHA256SUMS are written,
+    COMPLETE is created, and the LATEST file is atomically updated to contain
+    the relative path runs/<run_id>.
+
+The repository root is repository/; APK files and APKINDEX.tar.gz are stored
+under repository/x86_64/. Offline verification passes the repository root to
+apk, which resolves the architecture directory.
 
 The one-shot prepare_alpine_bundle CLI command remains available for scripts.
 It starts and terminates its own GRML VM and writes phase progress to the log.

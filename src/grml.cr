@@ -59,66 +59,69 @@ module GRML
   
     module PrepareAlpineBundle
       def prepare_alpine_bundle(branch : String = "latest-stable", progress : Proc(String, Nil)? = nil) : Nil
-        unless branch =~ /\A[a-zA-Z0-9._-]+\z/
-          raise "Invalid Alpine branch: #{branch.inspect}"
-        end
-
-        bundle = "/mnt/shared/alpine-bundle"
-        repository = "#{bundle}/repository"
-        tools = "#{bundle}/tools"
-        keys = "#{bundle}/keys"
+        run = GRML::AlpineBundleRun.new(
+          branch,
+          @vm.shared_path,
+          Time.utc,
+          Random.rand(0_i64..Int64::MAX)
+        )
+        bundle = run.directory
+        repository = run.repository_root
+        packages = run.packages_directory
+        tools = run.tools_directory
+        keys = run.keys_directory
         arch = "x86_64"
-        packages = "#{repository}/#{arch}"
-        apk_root = "#{bundle}/apk-root"
+        apk_root = run.apk_root
         mirror = "https://dl-cdn.alpinelinux.org/alpine"
         started_at = Time.monotonic
 
         report_bundle_progress(progress, "Preparing Alpine offline bundle")
         report_bundle_progress(progress, "Alpine branch: #{branch}")
-        report_bundle_progress(progress, "Bundle directory: #{@vm.shared_path}/alpine-bundle")
+        report_bundle_progress(progress, "Run ID: #{run.run_id}")
+        report_bundle_progress(progress, "Bundle directory: #{run.host_directory}")
+        report_bundle_progress(progress, "LATEST pointer: #{run.host_latest_pointer}")
 
         report_bundle_stage(1, "Checking GRML architecture", progress) do
           verify_bundle_architecture
         end
 
-        report_bundle_stage(2, "Preparing bundle directory", progress) do
-          # Invalidate any previous success marker before rebuilding. A failed repeat
-          # must not leave an old manifest describing a partially replaced bundle.
+        report_bundle_stage(2, "Creating an isolated bundle run directory", progress) do
           run_bundle_command(
-            "rm -rf #{repository} #{apk_root} #{keys} #{tools} #{bundle}/verify-root && " +
-            "rm -f #{bundle}/MANIFEST #{bundle}/SHA256SUMS && " +
-            "mkdir -p #{tools} #{keys} #{packages} #{apk_root}"
+            "mkdir -p '#{run.runs_root}' && " +
+            "mkdir '#{bundle}' && " +
+            "mkdir -p '#{tools}' '#{keys}' '#{packages}' '#{apk_root}' && " +
+            "printf 'run_id=%s\\nstatus=running\\n' '#{run.run_id}' > '#{bundle}/RUNNING'"
           )
         end
 
         report_bundle_stage(3, "Downloading and verifying alpine-chroot-install", progress) do
           run_bundle_command(
-            "cd #{tools} && curl -fsSL " +
+            "cd '#{tools}' && curl -fsSL " +
             "https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/v0.14.0/alpine-chroot-install " +
             "-o alpine-chroot-install"
           )
           run_bundle_command(
-            "cd #{tools} && printf '%s  %s\\n' " +
+            "cd '#{tools}' && printf '%s  %s\\n' " +
             "ccbf65f85cdc351851f8ad025bb3e65bae4d5b06 alpine-chroot-install | sha1sum -c -"
           )
         end
 
         report_bundle_stage(4, "Downloading and verifying apk.static", progress) do
           run_bundle_command(
-            "cd #{tools} && curl -fsSL " +
+            "cd '#{tools}' && curl -fsSL " +
             "https://gitlab.alpinelinux.org/api/v4/projects/5/packages/generic/v2.14.7/x86_64/apk.static " +
             "-o apk.static"
           )
           run_bundle_command(
-            "cd #{tools} && printf '%s  %s\\n' " +
+            "cd '#{tools}' && printf '%s  %s\\n' " +
             "bdd044e0fd6cc388c5e571e1093efa5f35f7767cc5aa338b0a2576a429009a62 apk.static | sha256sum -c -"
           )
-          run_bundle_command("chmod +x #{tools}/apk.static")
+          run_bundle_command("chmod +x '#{tools}/apk.static'")
         end
 
         report_bundle_stage(5, "Extracting and installing Alpine signing keys", progress) do
           extract_alpine_keys(tools, keys)
-          run_bundle_command("mkdir -p #{apk_root}/etc/apk/keys && cp #{keys}/*.rsa.pub #{apk_root}/etc/apk/keys/")
+          run_bundle_command("mkdir -p '#{apk_root}/etc/apk/keys' && cp '#{keys}'/*.rsa.pub '#{apk_root}/etc/apk/keys/'")
         end
 
         report_bundle_stage(6, "Fetching Alpine packages from main and community", progress) do
@@ -129,16 +132,26 @@ module GRML
           build_local_repository(packages, tools, keys)
         end
 
-        report_bundle_stage(8, "Verifying offline installation", progress) do
-          verify_offline_repository(packages, bundle, tools, keys, arch)
+        report_bundle_stage(8, "Checking the local APK repository", progress) do
+          inspect_local_repository(bundle, repository, packages)
         end
 
-        report_bundle_stage(9, "Writing manifest and checksums", progress) do
-          write_bundle_manifest(bundle, repository, branch)
+        report_bundle_stage(9, "Verifying offline installation", progress) do
+          verify_offline_repository(repository, bundle, tools, keys, arch)
+        end
+
+        report_bundle_stage(10, "Writing manifest, checksums, and completion marker", progress) do
+          write_bundle_manifest(bundle, branch, arch, run.run_id)
+        end
+
+        report_bundle_stage(11, "Publishing the LATEST bundle pointer", progress) do
+          publish_latest_bundle(run)
         end
 
         elapsed = Time.monotonic - started_at
-        report_bundle_progress(progress, "Prepared Alpine offline bundle in #{@vm.shared_path}/alpine-bundle (total: #{elapsed.total_seconds.round(1)}s)")
+        report_bundle_progress(progress, "Prepared Alpine offline bundle: #{run.host_directory}")
+        report_bundle_progress(progress, "LATEST now contains: #{run.latest_pointer_contents}")
+        report_bundle_progress(progress, "Total preparation time: #{elapsed.total_seconds.round(1)}s")
       end
 
       private def report_bundle_stage(
@@ -147,7 +160,7 @@ module GRML
         progress : Proc(String, Nil)?,
         &block : -> Nil
       ) : Nil
-        label = "[#{index}/9] #{title}"
+        label = "[#{index}/11] #{title}"
         started_at = Time.monotonic
         report_bundle_progress(progress, "#{label} ...")
 
@@ -181,11 +194,11 @@ module GRML
 
       private def extract_alpine_keys(tools : String, keys : String) : Nil
         script = "#{tools}/alpine-chroot-install"
-        command = "awk '/^ALPINE_KEYS=/,/^\\x27$/ { if (NR > 1 && $0 !~ /^ALPINE_KEYS=/ && $0 !~ /^\\x27$/) print }' #{script} | " +
+        command = "awk '/^ALPINE_KEYS=/,/^\\x27$/ { if (NR > 1 && $0 !~ /^ALPINE_KEYS=/ && $0 !~ /^\\x27$/) print }' '#{script}' | " +
           "while IFS= read -r line; do " +
           "id=\${line%%:*}; content=\${line#*:}; " +
           "[ -n \"\${id}\" ] || continue; " +
-          "file=#{keys}/alpine-devel@lists.alpinelinux.org-\${id}.rsa.pub; " +
+          "file='#{keys}/alpine-devel@lists.alpinelinux.org-'\${id}'.rsa.pub'; " +
           "printf '%s\\n' '-----BEGIN PUBLIC KEY-----' > \"\${file}\"; " +
           "printf '%b\\n' \"\${content}\" >> \"\${file}\"; " +
           "printf '%s\\n' '-----END PUBLIC KEY-----' >> \"\${file}\"; done"
@@ -193,35 +206,70 @@ module GRML
       end
 
       private def fetch_alpine_packages(packages : String, apk_root : String, tools : String, mirror : String, branch : String) : Nil
-        command = "#{tools}/apk.static --root #{apk_root} --keys-dir #{apk_root}/etc/apk/keys --no-cache --arch x86_64 " +
+        command = "'#{tools}/apk.static' --root '#{apk_root}' --keys-dir '#{apk_root}/etc/apk/keys' --no-cache --arch x86_64 " +
           "--repository #{mirror}/#{branch}/main " +
           "--repository #{mirror}/#{branch}/community " +
-          "fetch --recursive --output #{packages} alpine-base alpine-keys"
+          "fetch --recursive --output '#{packages}' alpine-base alpine-keys"
         run_bundle_command(command)
       end
 
       private def build_local_repository(packages : String, tools : String, keys : String) : Nil
         index = "#{packages}/APKINDEX.tar.gz"
         run_bundle_command(
-          "cd #{packages} && #{tools}/apk.static --keys-dir #{keys} index --output #{index} *.apk"
+          "cd '#{packages}' && '#{tools}/apk.static' --keys-dir '#{keys}' index --output '#{index}' *.apk"
         )
       end
 
-      private def verify_offline_repository(packages : String, bundle : String, tools : String, keys : String, arch : String) : Nil
-        test_root = "#{bundle}/verify-root"
-        run_bundle_command("rm -rf #{test_root} && mkdir -p #{test_root}/etc/apk/keys && cp #{keys}/*.rsa.pub #{test_root}/etc/apk/keys/")
-        command = "#{tools}/apk.static --root #{test_root} --keys-dir #{test_root}/etc/apk/keys " +
-          "--allow-untrusted --no-network --arch #{arch} --repository #{packages} " +
-          "add --initdb alpine-base alpine-keys"
-        run_bundle_command(command)
-        run_bundle_command("rm -rf #{test_root}")
+      private def inspect_local_repository(bundle : String, repository : String, packages : String) : Nil
+        index = "#{packages}/APKINDEX.tar.gz"
+        command = "set -eu; " +
+          "if [ ! -d '#{packages}' ]; then " +
+          "echo 'Missing APK architecture directory: #{packages}' >&2; " +
+          "find '#{bundle}' -maxdepth 4 -print >&2 || true; exit 41; fi; " +
+          "if [ ! -s '#{index}' ]; then " +
+          "echo 'Missing or empty APK index: #{index}' >&2; " +
+          "find '#{bundle}' -maxdepth 4 -print >&2 || true; exit 42; fi; " +
+          "package_count=$(find '#{packages}' -maxdepth 1 -type f -name '*.apk' | wc -l | tr -d '[:space:]'); " +
+          "if [ \"$package_count\" -eq 0 ]; then " +
+          "echo 'No APK package files found in: #{packages}' >&2; " +
+          "find '#{bundle}' -maxdepth 4 -print >&2 || true; exit 43; fi; " +
+          "repository_bytes=$(du -sb '#{repository}' | cut -f1); " +
+          "printf 'Repository root: %s\\nAPK architecture directory: %s\\nAPK files: %s\\nRepository size: %s bytes\\nIndex: %s\\n' " +
+          "'#{repository}' '#{packages}' \"$package_count\" \"$repository_bytes\" '#{index}'"
+
+        result = @interaction.execute(command, 300.seconds)
+        unless result.success?
+          raise "Local APK repository preflight failed (exit=#{result.exit_code}):\n#{result.stderr}\n#{result.stdout}"
+        end
+
+        report_bundle_progress(nil, result.stdout.strip)
       end
 
-      private def write_bundle_manifest(bundle : String, repository : String, branch : String) : Nil
-        command = "cd #{bundle} && " +
-          "printf 'format=2\\nalpine_branch=%s\\narchitecture=x86_64\\nrepository=repository/x86_64\\nindex_signature=unsigned\\n' #{branch} > MANIFEST && " +
-          "find repository tools keys -type f ! -name SHA256SUMS -print0 | " +
-          "sort -z | xargs -0 sha256sum > SHA256SUMS"
+      private def verify_offline_repository(repository : String, bundle : String, tools : String, keys : String, arch : String) : Nil
+        test_root = "#{bundle}/verify-root"
+        run_bundle_command("rm -rf '#{test_root}' && mkdir -p '#{test_root}/etc/apk/keys' && cp '#{keys}'/*.rsa.pub '#{test_root}/etc/apk/keys/'")
+        command = "'#{tools}/apk.static' --root '#{test_root}' --keys-dir '#{test_root}/etc/apk/keys' " +
+          "--allow-untrusted --no-network --arch #{arch} --repository '#{repository}' " +
+          "add --initdb alpine-base alpine-keys"
+        run_bundle_command(command)
+        run_bundle_command("rm -rf '#{test_root}'")
+      end
+
+      private def write_bundle_manifest(bundle : String, branch : String, arch : String, run_id : String) : Nil
+        command = "cd '#{bundle}' && " +
+          "printf 'format=3\\nrun_id=%s\\nalpine_branch=%s\\narchitecture=%s\\nrepository=repository\\nrepository_architecture=%s\\nindex_signature=unsigned\\ncompletion_marker=COMPLETE\\n' " +
+          "'#{run_id}' '#{branch}' '#{arch}' '#{arch}' > MANIFEST && " +
+          "find MANIFEST repository tools keys -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS && " +
+          "printf 'run_id=%s\\n' '#{run_id}' > COMPLETE && " +
+          "rm -f RUNNING"
+        run_bundle_command(command)
+      end
+
+      private def publish_latest_bundle(run : GRML::AlpineBundleRun) : Nil
+        command = "test -f '#{run.directory}/COMPLETE' && " +
+          "tmp=$(mktemp '#{run.bundle_root}/.LATEST.XXXXXX') && " +
+          "printf '%s\\n' '#{run.latest_pointer_contents}' > \"$tmp\" && " +
+          "mv -f \"$tmp\" '#{run.bundle_root}/LATEST'"
         run_bundle_command(command)
       end
 
@@ -306,6 +354,63 @@ module GRML
     include CreateAlpineImage
     include PrepareAlpineBundle
     include Terminate
+  end
+
+  class AlpineBundleRun
+    getter run_id : String
+    getter bundle_root : String
+    getter runs_root : String
+    getter directory : String
+    getter repository_root : String
+    getter packages_directory : String
+    getter tools_directory : String
+    getter keys_directory : String
+    getter apk_root : String
+    getter verify_root : String
+    getter host_directory : String
+    getter host_latest_pointer : String
+    getter latest_pointer_contents : String
+
+    def initialize(
+      branch : String,
+      shared_directory : String,
+      timestamp : Time,
+      nonce : Int64
+    )
+      unless branch =~ /\A[a-zA-Z0-9._-]+\z/
+        raise ArgumentError.new("Invalid Alpine branch: #{branch.inspect}")
+      end
+      raise ArgumentError.new("Alpine bundle run nonce must not be negative") if nonce < 0
+
+      @run_id = "#{branch}-#{timestamp.to_s("%Y%m%dT%H%M%SZ")}-#{nonce.to_s(16)}"
+
+      @bundle_root = "/mnt/shared/alpine-bundles"
+      @runs_root = "#{@bundle_root}/runs"
+      @directory = "#{@runs_root}/#{@run_id}"
+      @repository_root = "#{@directory}/repository"
+      @packages_directory = "#{@repository_root}/x86_64"
+      @tools_directory = "#{@directory}/tools"
+      @keys_directory = "#{@directory}/keys"
+      @apk_root = "#{@directory}/apk-root"
+      @verify_root = "#{@directory}/verify-root"
+
+      host_shared_directory = shared_directory.sub(/\/+\z/, "")
+      @host_directory = File.join(host_shared_directory, "alpine-bundles", "runs", @run_id)
+      @host_latest_pointer = File.join(host_shared_directory, "alpine-bundles", "LATEST")
+      @latest_pointer_contents = "runs/#{@run_id}"
+    end
+
+    def self.new_id(branch : String) : String
+      timestamp = Time.utc
+      nonce = Random.rand(0_i64..Int64::MAX)
+      timestamp_text = timestamp.to_s("%Y%m%dT%H%M%SZ")
+
+      unless branch =~ /\A[a-zA-Z0-9._-]+\z/
+        raise ArgumentError.new("Invalid Alpine branch: #{branch.inspect}")
+      end
+
+      "#{branch}-#{timestamp_text}-#{nonce.to_s(16)}"
+    end
   end
 
   class REPL
