@@ -6,7 +6,6 @@ def boot : Nil
   verify_shared_directory
 
   Log.info { "GRML shared directory is operational" }
-  Log.info { "Press Ctrl-C to terminate the VM." }
 end
 
 private def navigate_boot_menu : Nil
