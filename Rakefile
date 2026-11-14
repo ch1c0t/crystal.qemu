@@ -3,7 +3,7 @@ task :bgem do
 end
 
 task :build do
-  sh 'shards build'
+  sh 'crystal build --no-codegen src/qemu.cr'
 end
 
 task :default => [:bgem, :build]
