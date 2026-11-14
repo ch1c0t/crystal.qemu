@@ -18,27 +18,29 @@ REPL commands:
   ocr
     Recognize text in the latest captured GRML display frame.
   prepare_alpine_bundle [alpine_branch]
-    Prepare an immutable Alpine offline bundle in
+    Fetch the recursive dependency closure of alpine-base and alpine-keys
+    from Alpine main and community, then store it under
     /mnt/shared/alpine-bundles/runs/<run_id>. The default branch is
-    latest-stable. Each invocation creates a new UTC timestamped run directory.
-    Previous runs are preserved. An incomplete run retains its files and
-    RUNNING marker; it has no COMPLETE marker and does not update LATEST.
-    After successful offline verification, MANIFEST and SHA256SUMS are written,
-    RUNNING is atomically renamed to COMPLETE, and LATEST is atomically updated
-    to contain the relative path runs/<run_id>.
+    latest-stable. Each invocation creates a unique UTC timestamped run.
+    Downloaded APK signatures are checked with the embedded Alpine public
+    keys. A local x86_64 APK index is generated and an isolated installation
+    is tested with networking disabled. The operation writes MANIFEST and
+    SHA256SUMS, verifies every listed checksum, marks the run COMPLETE, and
+    atomically updates LATEST only after verification succeeds.
+    See docs/alpine-offline-bundle.md for the artifact layout, checks,
+    trust model, and failure behavior.
 
 The repository root is repository/; APK files and APKINDEX.tar.gz are stored
-under repository/x86_64/. Offline verification passes the repository root to
-apk, which resolves the architecture directory.
-
-The local APK index is generated with --rewrite-arch x86_64. This is
-required because APK files are stored in repository/x86_64/, including
-packages whose upstream metadata identifies them as noarch. The index must
-use the architecture matching the repository path so APK resolves every
-archive from the directory where it was downloaded.
+under repository/x86_64/. The locally generated APK index is unsigned. Since
+APK requires accepting that local index, the isolated install test uses
+--allow-untrusted; package archives are independently signature-verified
+before that test. The bundle is an offline package repository snapshot, not
+a bootable Alpine root filesystem or disk image.
 
 The one-shot prepare_alpine_bundle CLI command remains available for scripts.
-It starts and terminates its own GRML VM and writes phase progress to the log.
+It starts and terminates its own GRML VM and reports phase-level progress.
+Package-manager output is collected when each guest command finishes; it is
+not streamed line by line during the operation.
 
 The tmux command boots GRML, waits for the shell prompt, types "tmux", and
 presses Enter. It keeps the VM running until Ctrl-C.

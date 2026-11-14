@@ -73,7 +73,7 @@ module GRML
         arch = GRML::AlpineBundleRun::ARCHITECTURE
         apk_root = run.apk_root
         mirror = "https://dl-cdn.alpinelinux.org/alpine"
-        started_at = Time.monotonic
+        started_at = Time.instant
 
         report_bundle_progress(progress, "Preparing Alpine offline bundle")
         report_bundle_progress(progress, "Alpine branch: #{branch}")
@@ -128,27 +128,39 @@ module GRML
           fetch_alpine_packages(packages, apk_root, tools, mirror, branch)
         end
 
-        report_bundle_stage(7, "Building the local APK repository index for x86_64", progress) do
+        report_bundle_stage(7, "Verifying downloaded APK package signatures", progress) do
+          run_bundle_command(run.package_verification_command)
+        end
+
+        report_bundle_stage(8, "Building the local APK repository index for x86_64", progress) do
           run_bundle_command(run.repository_index_command)
         end
 
-        report_bundle_stage(8, "Checking the local APK repository", progress) do
+        report_bundle_stage(9, "Checking the local APK repository", progress) do
           inspect_local_repository(bundle, repository, packages, progress)
         end
 
-        report_bundle_stage(9, "Verifying offline installation", progress) do
+        report_bundle_stage(10, "Verifying offline installation", progress) do
           verify_offline_repository(repository, bundle, tools, keys, arch)
         end
 
-        report_bundle_stage(10, "Writing manifest, checksums, and completion marker", progress) do
-          write_bundle_manifest(bundle, branch, arch, run.run_id)
+        report_bundle_stage(11, "Writing bundle manifest and SHA-256 checksums", progress) do
+          run_bundle_command(run.write_manifest_command(branch))
         end
 
-        report_bundle_stage(11, "Publishing the LATEST bundle pointer", progress) do
-          publish_latest_bundle(run)
+        report_bundle_stage(12, "Verifying bundle manifest and every checksum", progress) do
+          run_bundle_command(run.verify_manifest_command(branch))
         end
 
-        elapsed = Time.monotonic - started_at
+        report_bundle_stage(13, "Marking the verified run COMPLETE", progress) do
+          run_bundle_command(run.complete_marker_command)
+        end
+
+        report_bundle_stage(14, "Publishing the LATEST bundle pointer", progress) do
+          run_bundle_command(run.publish_latest_command)
+        end
+
+        elapsed = Time.instant - started_at
         report_bundle_progress(progress, "Prepared Alpine offline bundle: #{run.host_directory}")
         report_bundle_progress(progress, "LATEST now contains: #{run.latest_pointer_contents}")
         report_bundle_progress(progress, "Total preparation time: #{elapsed.total_seconds.round(1)}s")
@@ -160,19 +172,19 @@ module GRML
         progress : Proc(String, Nil)?,
         &block : -> Nil
       ) : Nil
-        label = "[#{index}/11] #{title}"
-        started_at = Time.monotonic
+        label = "[#{index}/14] #{title}"
+        started_at = Time.instant
         report_bundle_progress(progress, "#{label} ...")
 
         begin
           yield
         rescue ex
-          elapsed = Time.monotonic - started_at
+          elapsed = Time.instant - started_at
           report_bundle_progress(progress, "#{label} FAILED (#{elapsed.total_seconds.round(1)}s)")
           raise "Failed during #{title}: #{ex.message}"
         end
 
-        elapsed = Time.monotonic - started_at
+        elapsed = Time.instant - started_at
         report_bundle_progress(progress, "#{label} done (#{elapsed.total_seconds.round(1)}s)")
       end
 
@@ -243,32 +255,18 @@ module GRML
         run_bundle_command("rm -rf '#{test_root}' && mkdir -p '#{test_root}/etc/apk/keys' && cp '#{keys}'/*.rsa.pub '#{test_root}/etc/apk/keys/'")
         command = "'#{tools}/apk.static' --root '#{test_root}' --keys-dir '#{test_root}/etc/apk/keys' " +
           "--allow-untrusted --no-network --arch #{arch} --repository '#{repository}' " +
-          "add --initdb alpine-base alpine-keys"
+          "add --initdb alpine-base alpine-keys && " +
+          "test -s '#{test_root}/lib/apk/db/installed' && " +
+          "grep -Fqx 'P:alpine-base' '#{test_root}/lib/apk/db/installed' && " +
+          "grep -Fqx 'P:alpine-keys' '#{test_root}/lib/apk/db/installed'"
         run_bundle_command(command)
         run_bundle_command("rm -rf '#{test_root}'")
-      end
-
-      private def write_bundle_manifest(bundle : String, branch : String, arch : String, run_id : String) : Nil
-        command = "cd '#{bundle}' && " +
-          "printf 'format=3\\nrun_id=%s\\nalpine_branch=%s\\narchitecture=%s\\nrepository=repository\\nrepository_architecture=%s\\nindex_signature=unsigned\\ncompletion_marker=COMPLETE\\n' " +
-          "'#{run_id}' '#{branch}' '#{arch}' '#{arch}' > MANIFEST && " +
-          "find MANIFEST repository tools keys -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS && " +
-          "mv RUNNING COMPLETE"
-        run_bundle_command(command)
-      end
-
-      private def publish_latest_bundle(run : GRML::AlpineBundleRun) : Nil
-        command = "test -f '#{run.directory}/COMPLETE' && " +
-          "tmp=$(mktemp '#{run.bundle_root}/.LATEST.XXXXXX') && " +
-          "printf '%s\\n' '#{run.latest_pointer_contents}' > \"$tmp\" && " +
-          "mv -f \"$tmp\" '#{run.bundle_root}/LATEST'"
-        run_bundle_command(command)
       end
 
       private def run_bundle_command(command : String) : Nil
         result = @interaction.execute(command, 300.seconds)
         unless result.success?
-          raise "Alpine bundle command failed (exit=#{result.exit_code}): #{command}\n#{result.stderr}"
+          raise "Alpine bundle command failed (exit=#{result.exit_code}): #{command}\n#{result.stderr}\n#{result.stdout}"
         end
       end
     end
@@ -394,14 +392,79 @@ module GRML
       @latest_pointer_contents = "runs/#{@run_id}"
     end
 
+    # Verify downloaded package signatures independently of the unsigned local index.
+    def package_verification_command : String
+      "cd '#{@packages_directory}' && '#{@tools_directory}/apk.static' --keys-dir '#{@keys_directory}' verify ./*.apk"
+    end
+
     # APK's repository index must describe the architecture directory in which
     # all fetched archives are stored. This rewrites upstream noarch entries too.
     def repository_index_command : String
       index = "#{@packages_directory}/APKINDEX.tar.gz"
       "cd '#{@packages_directory}' && '#{@tools_directory}/apk.static' --keys-dir '#{@keys_directory}' index --rewrite-arch #{ARCHITECTURE} --output '#{index}' *.apk"
     end
-  end
 
+    # Remove build-only roots, then write a manifest and SHA-256 hashes for every
+    # file that belongs to the completed bundle payload.
+    def write_manifest_command(branch : String) : String
+      "set -eu; cd '#{@directory}' && " +
+        "rm -rf apk-root verify-root && " +
+        "test -x tools/apk.static && test -s tools/alpine-chroot-install && " +
+        "find keys -type f -name '*.rsa.pub' -size +0c | grep -q . && " +
+        "test -s repository/#{ARCHITECTURE}/APKINDEX.tar.gz && " +
+        "package_count=$(find repository/#{ARCHITECTURE} -maxdepth 1 -type f -name '*.apk' | wc -l | tr -d '[:space:]') && " +
+        "test \"$package_count\" -gt 0 && " +
+        "repository_bytes=$(du -sb repository | cut -f1) && " +
+        "printf 'format=4\\nrun_id=%s\\nalpine_branch=%s\\narchitecture=%s\\nrepositories=main,community\\nrequested_packages=alpine-base,alpine-keys\\nrepository=repository\\nrepository_architecture=%s\\nalpine_chroot_install_version=0.14.0\\napk_tools_version=2.14.7\\npackage_signature_verification=apk-verify\\npackage_signatures=verified\\nindex_signature=unsigned\\noffline_install=passed\\noffline_install_network=disabled\\npackage_count=%s\\nrepository_bytes=%s\\nchecksum_algorithm=sha256\\n' " +
+        "'#{@run_id}' '#{branch}' '#{ARCHITECTURE}' '#{ARCHITECTURE}' \"$package_count\" \"$repository_bytes\" > MANIFEST && " +
+        "find MANIFEST repository tools keys -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS"
+    end
+
+    # Audit the marker, manifest, repository contents, and every recorded checksum
+    # before the run is promoted from RUNNING to COMPLETE.
+    def verify_manifest_command(branch : String) : String
+      "set -eu; cd '#{@directory}' && " +
+        "test -s RUNNING && test ! -e COMPLETE && " +
+        "grep -Fqx 'run_id=#{@run_id}' RUNNING && " +
+        "grep -Fqx 'format=4' MANIFEST && " +
+        "grep -Fqx 'run_id=#{@run_id}' MANIFEST && " +
+        "grep -Fqx 'alpine_branch=#{branch}' MANIFEST && " +
+        "grep -Fqx 'architecture=#{ARCHITECTURE}' MANIFEST && " +
+        "grep -Fqx 'repositories=main,community' MANIFEST && " +
+        "grep -Fqx 'requested_packages=alpine-base,alpine-keys' MANIFEST && " +
+        "grep -Fqx 'package_signature_verification=apk-verify' MANIFEST && " +
+        "grep -Fqx 'package_signatures=verified' MANIFEST && " +
+        "grep -Fqx 'index_signature=unsigned' MANIFEST && " +
+        "grep -Fqx 'offline_install=passed' MANIFEST && " +
+        "grep -Fqx 'offline_install_network=disabled' MANIFEST && " +
+        "grep -Fqx 'checksum_algorithm=sha256' MANIFEST && " +
+        "test -s repository/#{ARCHITECTURE}/APKINDEX.tar.gz && " +
+        "test -x tools/apk.static && test -s tools/alpine-chroot-install && " +
+        "test ! -e apk-root && test ! -e verify-root && " +
+        "find keys -type f -name '*.rsa.pub' -size +0c | grep -q . && " +
+        "package_count=$(find repository/#{ARCHITECTURE} -maxdepth 1 -type f -name '*.apk' | wc -l | tr -d '[:space:]') && " +
+        "test \"$package_count\" -gt 0 && grep -Fqx \"package_count=$package_count\" MANIFEST && " +
+        "repository_bytes=$(du -sb repository | cut -f1) && grep -Fqx \"repository_bytes=$repository_bytes\" MANIFEST && " +
+        "expected_files=$(find MANIFEST repository tools keys -type f | wc -l | tr -d '[:space:]') && " +
+        "recorded_files=$(wc -l < SHA256SUMS | tr -d '[:space:]') && " +
+        "test \"$expected_files\" = \"$recorded_files\" && " +
+        "sha256sum -c SHA256SUMS"
+    end
+
+    def complete_marker_command : String
+      "set -eu; cd '#{@directory}' && test -s RUNNING && test ! -e COMPLETE && mv RUNNING COMPLETE"
+    end
+
+    # Publish LATEST by renaming a temporary file on the same filesystem.
+    def publish_latest_command : String
+      "set -eu; test -s '#{@directory}/COMPLETE' && " +
+        "grep -Fqx 'run_id=#{@run_id}' '#{@directory}/COMPLETE' && " +
+        "tmp=$(mktemp '#{@bundle_root}/.LATEST.XXXXXX') && " +
+        "trap 'rm -f \"$tmp\"' 0 && " +
+        "printf '%s\\n' '#{@latest_pointer_contents}' > \"$tmp\" && " +
+        "mv -f \"$tmp\" '#{@bundle_root}/LATEST'"
+    end
+  end
   class REPL
     FOCUS_ENV = "GRML_AGENT_REPL_FOCUS"
     DEFAULT_ALPINE_BRANCH = "latest-stable"
