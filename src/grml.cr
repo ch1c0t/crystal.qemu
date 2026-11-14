@@ -70,7 +70,7 @@ module GRML
         packages = run.packages_directory
         tools = run.tools_directory
         keys = run.keys_directory
-        arch = "x86_64"
+        arch = GRML::AlpineBundleRun::ARCHITECTURE
         apk_root = run.apk_root
         mirror = "https://dl-cdn.alpinelinux.org/alpine"
         started_at = Time.monotonic
@@ -128,8 +128,8 @@ module GRML
           fetch_alpine_packages(packages, apk_root, tools, mirror, branch)
         end
 
-        report_bundle_stage(7, "Building the local APK repository index", progress) do
-          build_local_repository(packages, tools, keys)
+        report_bundle_stage(7, "Building the local APK repository index for x86_64", progress) do
+          run_bundle_command(run.repository_index_command)
         end
 
         report_bundle_stage(8, "Checking the local APK repository", progress) do
@@ -211,13 +211,6 @@ module GRML
           "--repository #{mirror}/#{branch}/community " +
           "fetch --recursive --output '#{packages}' alpine-base alpine-keys"
         run_bundle_command(command)
-      end
-
-      private def build_local_repository(packages : String, tools : String, keys : String) : Nil
-        index = "#{packages}/APKINDEX.tar.gz"
-        run_bundle_command(
-          "cd '#{packages}' && '#{tools}/apk.static' --keys-dir '#{keys}' index --output '#{index}' *.apk"
-        )
       end
 
       private def inspect_local_repository(bundle : String, repository : String, packages : String, progress : Proc(String, Nil)?) : Nil
@@ -356,6 +349,8 @@ module GRML
   end
 
   class AlpineBundleRun
+    ARCHITECTURE = "x86_64"
+
     getter run_id : String
     getter bundle_root : String
     getter runs_root : String
@@ -399,16 +394,11 @@ module GRML
       @latest_pointer_contents = "runs/#{@run_id}"
     end
 
-    def self.new_id(branch : String) : String
-      timestamp = Time.utc
-      nonce = Random.rand(0_i64..Int64::MAX)
-      timestamp_text = timestamp.to_s("%Y%m%dT%H%M%SZ")
-
-      unless branch =~ /\A[a-zA-Z0-9._-]+\z/
-        raise ArgumentError.new("Invalid Alpine branch: #{branch.inspect}")
-      end
-
-      "#{branch}-#{timestamp_text}-#{nonce.to_s(16)}"
+    # APK's repository index must describe the architecture directory in which
+    # all fetched archives are stored. This rewrites upstream noarch entries too.
+    def repository_index_command : String
+      index = "#{@packages_directory}/APKINDEX.tar.gz"
+      "cd '#{@packages_directory}' && '#{@tools_directory}/apk.static' --keys-dir '#{@keys_directory}' index --rewrite-arch #{ARCHITECTURE} --output '#{index}' *.apk"
     end
   end
 

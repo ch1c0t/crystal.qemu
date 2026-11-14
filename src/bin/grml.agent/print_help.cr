@@ -32,6 +32,12 @@ The repository root is repository/; APK files and APKINDEX.tar.gz are stored
 under repository/x86_64/. Offline verification passes the repository root to
 apk, which resolves the architecture directory.
 
+The local APK index is generated with --rewrite-arch x86_64. This is
+required because APK files are stored in repository/x86_64/, including
+packages whose upstream metadata identifies them as noarch. The index must
+use the architecture matching the repository path so APK resolves every
+archive from the directory where it was downloaded.
+
 The one-shot prepare_alpine_bundle CLI command remains available for scripts.
 It starts and terminates its own GRML VM and writes phase progress to the log.
 
