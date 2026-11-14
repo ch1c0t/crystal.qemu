@@ -90,7 +90,7 @@ module GRML
             "mkdir -p '#{run.runs_root}' && " +
             "mkdir '#{bundle}' && " +
             "mkdir -p '#{tools}' '#{keys}' '#{packages}' '#{apk_root}' && " +
-            "printf 'run_id=%s\\n\\n' '#{run.run_id}' > '#{bundle}/RUNNING'"
+            "printf 'run_id=%s\\n' '#{run.run_id}' > '#{bundle}/RUNNING'"
           )
         end
 
