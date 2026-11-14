@@ -11,6 +11,7 @@ def prepare_alpine_bundle(branch : String = "latest-stable", progress : Proc(Str
   packages = "#{repository}/#{arch}"
   apk_root = "#{bundle}/apk-root"
   mirror = "https://dl-cdn.alpinelinux.org/alpine"
+  started_at = Time.monotonic
 
   report_bundle_progress(progress, "Preparing Alpine offline bundle")
   report_bundle_progress(progress, "Alpine branch: #{branch}")
@@ -76,7 +77,8 @@ def prepare_alpine_bundle(branch : String = "latest-stable", progress : Proc(Str
     write_bundle_manifest(bundle, repository, branch)
   end
 
-  report_bundle_progress(progress, "Prepared Alpine offline bundle in #{@vm.shared_path}/alpine-bundle")
+  elapsed = Time.monotonic - started_at
+  report_bundle_progress(progress, "Prepared Alpine offline bundle in #{@vm.shared_path}/alpine-bundle (total: #{elapsed.total_seconds.round(1)}s)")
 end
 
 private def report_bundle_stage(

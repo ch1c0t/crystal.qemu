@@ -71,6 +71,7 @@ module GRML
         packages = "#{repository}/#{arch}"
         apk_root = "#{bundle}/apk-root"
         mirror = "https://dl-cdn.alpinelinux.org/alpine"
+        started_at = Time.monotonic
 
         report_bundle_progress(progress, "Preparing Alpine offline bundle")
         report_bundle_progress(progress, "Alpine branch: #{branch}")
@@ -136,7 +137,8 @@ module GRML
           write_bundle_manifest(bundle, repository, branch)
         end
 
-        report_bundle_progress(progress, "Prepared Alpine offline bundle in #{@vm.shared_path}/alpine-bundle")
+        elapsed = Time.monotonic - started_at
+        report_bundle_progress(progress, "Prepared Alpine offline bundle in #{@vm.shared_path}/alpine-bundle (total: #{elapsed.total_seconds.round(1)}s)")
       end
 
       private def report_bundle_stage(
@@ -367,7 +369,8 @@ module GRML
 
         repl.on_command("prepare_alpine_bundle") do |context, arguments|
           progress = ->(message : String) { context.puts(message) }
-          context.puts(GRML::REPL.prepare_alpine_bundle(agent, arguments, progress))
+          GRML::REPL.prepare_alpine_bundle(agent, arguments, progress)
+          nil
         end
       end
     end
