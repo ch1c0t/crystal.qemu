@@ -30,9 +30,13 @@ class REPL
 
   # Keep this operation on the existing agent. The caller may invoke it
   # repeatedly without creating another VM or reconnecting to the guest.
-  def self.prepare_alpine_bundle(agent : T, arguments : Array(String)) : String forall T
+  def self.prepare_alpine_bundle(
+    agent : T,
+    arguments : Array(String),
+    progress : Proc(String, Nil)? = nil
+  ) : String forall T
     branch = alpine_branch(arguments)
-    agent.prepare_alpine_bundle(branch)
+    agent.prepare_alpine_bundle(branch, progress)
     "Prepared Alpine offline bundle (branch: #{branch})."
   end
 
@@ -54,7 +58,8 @@ class REPL
       end
 
       repl.on_command("prepare_alpine_bundle") do |context, arguments|
-        context.puts(GRML::REPL.prepare_alpine_bundle(agent, arguments))
+        progress = ->(message : String) { context.puts(message) }
+        context.puts(GRML::REPL.prepare_alpine_bundle(agent, arguments, progress))
       end
     end
   end

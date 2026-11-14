@@ -20,11 +20,13 @@ REPL commands:
     Recognize text in the latest captured GRML display frame.
   prepare_alpine_bundle [alpine_branch]
     Prepare or rebuild the Alpine offline bundle in /mnt/shared. The default
-    branch is latest-stable. This command can be run repeatedly in the same
-    booted GRML guest; it does not reboot the VM.
+    branch is latest-stable. It reports each preparation phase as it starts
+    and completes, with elapsed time. Failures identify the failing phase and
+    include the guest command diagnostics. This command can be run repeatedly
+    in the same booted GRML guest; it does not reboot the VM.
 
 The one-shot prepare_alpine_bundle CLI command remains available for scripts.
-It starts and terminates its own GRML VM.
+It starts and terminates its own GRML VM and writes phase progress to the log.
 
 The tmux command boots GRML, waits for the shell prompt, types "tmux", and
 presses Enter. It keeps the VM running until Ctrl-C.

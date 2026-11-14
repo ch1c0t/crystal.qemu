@@ -25,8 +25,12 @@ class FakeGRMLAgent
     @interaction = FakeGRMLInteraction.new
   end
 
-  def prepare_alpine_bundle(branch : String = "latest-stable") : Nil
+  def prepare_alpine_bundle(
+    branch : String = "latest-stable",
+    progress : Proc(String, Nil)? = nil
+  ) : Nil
     @prepared_branches << branch
+    progress.try &.call("fake preparation progress")
   end
 end
 
@@ -90,6 +94,17 @@ describe GRML::REPL do
     result = GRML::REPL.prepare_alpine_bundle(agent, [] of String)
 
     result.should contain("latest-stable")
+    agent.prepared_branches.should eq(["latest-stable"])
+  end
+
+  it "forwards progress messages to the supplied callback" do
+    agent = FakeGRMLAgent.new
+    messages = [] of String
+    progress = ->(message : String) { messages << message; nil }
+
+    GRML::REPL.prepare_alpine_bundle(agent, [] of String, progress)
+
+    messages.should eq(["fake preparation progress"])
     agent.prepared_branches.should eq(["latest-stable"])
   end
 
