@@ -10,18 +10,33 @@ Usage:
   grml.agent --version
 
 The boot command discovers a GRML ISO in ./cdrom/ (or QEMU_ISO_DIR) unless
---iso is supplied. It advances through GRML boot prompts, waits for the
-root@grml shell prompt, and keeps the VM running until Ctrl-C.
+--iso is supplied. It advances through GRML boot prompts, verifies the QEMU
+Guest Agent and shared directory, then starts a custom Tmux REPL in the same
+booted guest. The REPL stays connected to that guest until the session is
+closed or Ctrl-C is pressed.
+
+REPL commands:
+  ocr
+    Recognize text in the latest captured GRML display frame.
+  prepare_alpine_bundle [alpine_branch]
+    Prepare or rebuild the Alpine offline bundle in /mnt/shared. The default
+    branch is latest-stable. This command can be run repeatedly in the same
+    booted GRML guest; it does not reboot the VM.
+
+The one-shot prepare_alpine_bundle CLI command remains available for scripts.
+It starts and terminates its own GRML VM.
 
 The tmux command boots GRML, waits for the shell prompt, types "tmux", and
 presses Enter. It keeps the VM running until Ctrl-C.
 
-The prepare_alpine_bundle command downloads Alpine packages and bootstrap tools
-into the QEMU shared directory. The default branch is latest-stable; specify a
-branch such as v3.22 to pin the package set.
-
 The create_alpine_image command boots GRML, then discovers an Alpine ISO in
 ./cdrom/ (or QEMU_ISO_DIR) unless an explicit Alpine ISO path is supplied.
+
+REPL:
+  GRML_AGENT_REPL_FOCUS=true|false (default: true)
+    true  Switch the current Tmux client to the REPL session.
+    false Keep the client in the boot pane; switch manually with:
+          tmux switch-client -t grml
 
 Logging:
   XEPHYR_LOG_LEVEL=INFO|DEBUG|TRACE (default: INFO)

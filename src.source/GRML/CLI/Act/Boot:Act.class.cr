@@ -10,6 +10,6 @@ def validate_arguments
 end
 
 protected def perform(agent : GRML::Agent) : Nil
-  Log.info { "GRML agent is running. Press Ctrl-C to terminate the VM." }
-  sleep
+  Log.info { "GRML agent is running. Starting REPL." }
+  GRML::REPL.new(agent).run
 end

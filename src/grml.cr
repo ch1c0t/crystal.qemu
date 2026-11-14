@@ -1,4 +1,5 @@
 require "./qemu"
+require "tmux_repl"
 
 module GRML
 
@@ -12,7 +13,6 @@ module GRML
         verify_shared_directory
       
         Log.info { "GRML shared directory is operational" }
-        Log.info { "Press Ctrl-C to terminate the VM." }
       end
       
       private def navigate_boot_menu : Nil
@@ -73,7 +73,13 @@ module GRML
         mirror = "https://dl-cdn.alpinelinux.org/alpine"
       
         verify_bundle_architecture
-        run_bundle_command("rm -rf #{repository} #{apk_root} #{keys} #{tools} && mkdir -p #{tools} #{keys} #{packages} #{apk_root}")
+        # Invalidate any previous success marker before rebuilding. A failed repeat
+        # must not leave an old manifest describing a partially replaced bundle.
+        run_bundle_command(
+          "rm -rf #{repository} #{apk_root} #{keys} #{tools} #{bundle}/verify-root && " +
+          "rm -f #{bundle}/MANIFEST #{bundle}/SHA256SUMS && " +
+          "mkdir -p #{tools} #{keys} #{packages} #{apk_root}"
+        )
         run_bundle_command(
           "cd #{tools} && curl -fsSL " +
           "https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/v0.14.0/alpine-chroot-install " +
@@ -97,7 +103,7 @@ module GRML
         run_bundle_command("mkdir -p #{apk_root}/etc/apk/keys && cp #{keys}/*.rsa.pub #{apk_root}/etc/apk/keys/")
         fetch_alpine_packages(packages, apk_root, tools, mirror, branch)
         build_local_repository(packages, tools, keys)
-        verify_offline_repository(repository, bundle, tools, keys, arch)
+        verify_offline_repository(packages, bundle, tools, keys, arch)
         write_bundle_manifest(bundle, repository, branch)
         Log.info { "Prepared Alpine offline bundle in #{@vm.shared_path}/alpine-bundle" }
       end
@@ -138,11 +144,11 @@ module GRML
         )
       end
       
-      private def verify_offline_repository(repository : String, bundle : String, tools : String, keys : String, arch : String) : Nil
+      private def verify_offline_repository(packages : String, bundle : String, tools : String, keys : String, arch : String) : Nil
         test_root = "#{bundle}/verify-root"
         run_bundle_command("rm -rf #{test_root} && mkdir -p #{test_root}/etc/apk/keys && cp #{keys}/*.rsa.pub #{test_root}/etc/apk/keys/")
         command = "#{tools}/apk.static --root #{test_root} --keys-dir #{test_root}/etc/apk/keys " +
-          "--allow-untrusted --no-network --arch #{arch} --repository #{repository} " +
+          "--allow-untrusted --no-network --arch #{arch} --repository #{packages} " +
           "add --initdb alpine-base alpine-keys"
         run_bundle_command(command)
         run_bundle_command("rm -rf #{test_root}")
@@ -159,7 +165,7 @@ module GRML
       private def run_bundle_command(command : String) : Nil
         result = @interaction.execute(command, 300.seconds)
         unless result.success?
-          raise "Alpine bundle command failed (exit=#{result.exit_code}): #{command}\\n#{result.stderr}"
+          raise "Alpine bundle command failed (exit=#{result.exit_code}): #{command}\n#{result.stderr}"
         end
       end
     end
@@ -239,6 +245,113 @@ module GRML
     include Terminate
   end
 
+  class REPL
+    FOCUS_ENV = "GRML_AGENT_REPL_FOCUS"
+    DEFAULT_ALPINE_BRANCH = "latest-stable"
+
+    def self.focus? : Bool
+      value = ENV.fetch(FOCUS_ENV, "true").strip.downcase
+
+      case value
+      when "1", "true", "yes", "on"
+        true
+      when "0", "false", "no", "off"
+        false
+      else
+        raise ArgumentError.new("#{FOCUS_ENV} must be a boolean (true/false, yes/no, on/off, or 1/0); got #{value.inspect}")
+      end
+    end
+
+    def self.alpine_branch(arguments : Array(String)) : String
+      if arguments.size > 1
+        raise ArgumentError.new("Usage: prepare_alpine_bundle [alpine_branch]")
+      end
+
+      branch = arguments.first? || DEFAULT_ALPINE_BRANCH
+      unless branch =~ /\A[a-zA-Z0-9._-]+\z/
+        raise ArgumentError.new("Invalid Alpine branch: #{branch.inspect}")
+      end
+
+      branch
+    end
+
+    # Keep this operation on the existing agent. The caller may invoke it
+    # repeatedly without creating another VM or reconnecting to the guest.
+    def self.prepare_alpine_bundle(agent : T, arguments : Array(String)) : String forall T
+      branch = alpine_branch(arguments)
+      agent.prepare_alpine_bundle(branch)
+      "Prepared Alpine offline bundle (branch: #{branch})."
+    end
+
+    def self.build_definition(agent : T) : TmuxREPL::Definition forall T
+      TmuxREPL.define("grml") do |repl|
+        repl.on_command("ocr") do |context, arguments|
+          raise ArgumentError.new("Usage: ocr") unless arguments.empty?
+
+          result = agent.interaction.latest_ocr
+          if error = result.error
+            raise "OCR failed for frame #{result.timestamp}: #{error}"
+          end
+
+          if result.text.strip.empty?
+            context.puts("(no text recognized)")
+          else
+            context.write(result.text)
+          end
+        end
+
+        repl.on_command("prepare_alpine_bundle") do |context, arguments|
+          context.puts(GRML::REPL.prepare_alpine_bundle(agent, arguments))
+        end
+      end
+    end
+
+    @definition : TmuxREPL::Definition
+    @started = false
+    @stopped = false
+
+    def initialize(@agent : Agent)
+      @definition = self.class.build_definition(@agent)
+    end
+
+    def run : Nil
+      Signal::INT.trap { terminate_on_signal }
+      Signal::TERM.trap { terminate_on_signal }
+
+      begin
+        focus = self.class.focus?
+        @definition.start(focus: focus)
+        @started = true
+
+        if focus
+          Log.info { "GRML REPL started in session 'grml'." }
+        else
+          Log.info { "GRML REPL started in session 'grml'; switch to it with: tmux switch-client -t grml" }
+        end
+
+        @definition.serve
+      ensure
+        stop
+      end
+    end
+
+    def stop : Nil
+      return if @stopped
+
+      @stopped = true
+      @definition.stop if @started
+    end
+
+    private def terminate_on_signal : Nil
+      begin
+        stop
+      ensure
+        @agent.terminate
+        exit
+      end
+    end
+  end
+
   module CLI
     def self.run(arguments : Array(String) = ARGV.dup) : Nil
       args = arguments.dup
@@ -299,8 +412,8 @@ module GRML
         end
         
         protected def perform(agent : GRML::Agent) : Nil
-          Log.info { "GRML agent is running. Press Ctrl-C to terminate the VM." }
-          sleep
+          Log.info { "GRML agent is running. Starting REPL." }
+          GRML::REPL.new(agent).run
         end
       end
     

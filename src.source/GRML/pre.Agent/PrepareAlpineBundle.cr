@@ -13,7 +13,13 @@ def prepare_alpine_bundle(branch : String = "latest-stable") : Nil
   mirror = "https://dl-cdn.alpinelinux.org/alpine"
 
   verify_bundle_architecture
-  run_bundle_command("rm -rf #{repository} #{apk_root} #{keys} #{tools} && mkdir -p #{tools} #{keys} #{packages} #{apk_root}")
+  # Invalidate any previous success marker before rebuilding. A failed repeat
+  # must not leave an old manifest describing a partially replaced bundle.
+  run_bundle_command(
+    "rm -rf #{repository} #{apk_root} #{keys} #{tools} #{bundle}/verify-root && " +
+    "rm -f #{bundle}/MANIFEST #{bundle}/SHA256SUMS && " +
+    "mkdir -p #{tools} #{keys} #{packages} #{apk_root}"
+  )
   run_bundle_command(
     "cd #{tools} && curl -fsSL " +
     "https://raw.githubusercontent.com/alpinelinux/alpine-chroot-install/v0.14.0/alpine-chroot-install " +
@@ -37,7 +43,7 @@ def prepare_alpine_bundle(branch : String = "latest-stable") : Nil
   run_bundle_command("mkdir -p #{apk_root}/etc/apk/keys && cp #{keys}/*.rsa.pub #{apk_root}/etc/apk/keys/")
   fetch_alpine_packages(packages, apk_root, tools, mirror, branch)
   build_local_repository(packages, tools, keys)
-  verify_offline_repository(repository, bundle, tools, keys, arch)
+  verify_offline_repository(packages, bundle, tools, keys, arch)
   write_bundle_manifest(bundle, repository, branch)
   Log.info { "Prepared Alpine offline bundle in #{@vm.shared_path}/alpine-bundle" }
 end
@@ -78,11 +84,11 @@ private def build_local_repository(packages : String, tools : String, keys : Str
   )
 end
 
-private def verify_offline_repository(repository : String, bundle : String, tools : String, keys : String, arch : String) : Nil
+private def verify_offline_repository(packages : String, bundle : String, tools : String, keys : String, arch : String) : Nil
   test_root = "#{bundle}/verify-root"
   run_bundle_command("rm -rf #{test_root} && mkdir -p #{test_root}/etc/apk/keys && cp #{keys}/*.rsa.pub #{test_root}/etc/apk/keys/")
   command = "#{tools}/apk.static --root #{test_root} --keys-dir #{test_root}/etc/apk/keys " +
-    "--allow-untrusted --no-network --arch #{arch} --repository #{repository} " +
+    "--allow-untrusted --no-network --arch #{arch} --repository #{packages} " +
     "add --initdb alpine-base alpine-keys"
   run_bundle_command(command)
   run_bundle_command("rm -rf #{test_root}")
@@ -99,6 +105,6 @@ end
 private def run_bundle_command(command : String) : Nil
   result = @interaction.execute(command, 300.seconds)
   unless result.success?
-    raise "Alpine bundle command failed (exit=#{result.exit_code}): #{command}\\n#{result.stderr}"
+    raise "Alpine bundle command failed (exit=#{result.exit_code}): #{command}\n#{result.stderr}"
   end
 end
