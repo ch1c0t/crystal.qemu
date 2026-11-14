@@ -12,18 +12,6 @@ shards:
     git: https://github.com/ch1c0t/crystal.global-amqp_channel.git
     version: 0.1.0+git.commit.692a8125d6a6c9d2d0c13685ee18cf27bb1abedb
 
-  pty:
-    git: https://github.com/ch1c0t/crystal.pty.git
-    version: 0.1.0+git.commit.c544d57a8aa0067f11e203ef4c6a336cc3b2043f
-
-  queue:
-    git: https://github.com/ch1c0t/crystal.queue.git
-    version: 0.0.0+git.commit.3ebc38be7ee2c49258365d1d95a454a1c0ffe040
-
-  reply:
-    git: https://github.com/i3oris/reply.git
-    version: 0.4.0
-
   stumpy_core:
     git: https://github.com/stumpycr/stumpy_core.git
     version: 1.9.1
@@ -32,15 +20,6 @@ shards:
     git: https://github.com/stumpycr/stumpy_png.git
     version: 5.0.1
 
-  tmux:
-    git: https://github.com/ch1c0t/crystal.tmux.git
-    version: 0.0.0+git.commit.36d9f13d48b30866ab28cf98b7cb3c412dadb4bb
-
-  tmux_repl:
-    git: https://github.com/ch1c0t/tmux-repl.git
-    version: 0.1.0+git.commit.8a321fa4049f989c44b2f1cea6720415b7c4909c
-
   xephyr_context:
     git: https://github.com/ch1c0t/xephyr.context.git
     version: 0.0.0+git.commit.9c88a91c1af54e49ff62d9a5d5b79fb950a0c7bf
-

@@ -38,11 +38,10 @@ jobs:
       - name: Install Crystal dependencies
         run: shards install
 
-      - name: Generate sources and build all targets
+      - name: Generate sources and type-check the library
         run: bundle exec rake
 
       - name: Run Crystal specs
         env:
-          # The current unit specs load Global but never open an AMQP connection.
           LAVINMQ_AMQP_UNIXSOCKET: /tmp/unused-test-amqp.sock
         run: crystal spec
