@@ -81,6 +81,10 @@ def verify_manifest_command(branch : String) : String
     "grep -Fqx 'run_id=#{@run_id}' MANIFEST && " +
     "grep -Fqx 'alpine_branch=#{branch}' MANIFEST && " +
     "grep -Fqx 'architecture=#{ARCHITECTURE}' MANIFEST && " +
+    "grep -Fqx 'repository=repository' MANIFEST && " +
+    "grep -Fqx 'repository_architecture=#{ARCHITECTURE}' MANIFEST && " +
+    "grep -Fqx 'alpine_chroot_install_version=0.14.0' MANIFEST && " +
+    "grep -Fqx 'apk_tools_version=2.14.7' MANIFEST && " +
     "grep -Fqx 'repositories=main,community' MANIFEST && " +
     "grep -Fqx 'requested_packages=alpine-base,alpine-keys' MANIFEST && " +
     "grep -Fqx 'package_signature_verification=apk-verify' MANIFEST && " +
@@ -96,9 +100,9 @@ def verify_manifest_command(branch : String) : String
     "package_count=$(find repository/#{ARCHITECTURE} -maxdepth 1 -type f -name '*.apk' | wc -l | tr -d '[:space:]') && " +
     "test \"$package_count\" -gt 0 && grep -Fqx \"package_count=$package_count\" MANIFEST && " +
     "repository_bytes=$(du -sb repository | cut -f1) && grep -Fqx \"repository_bytes=$repository_bytes\" MANIFEST && " +
-    "expected_files=$(find MANIFEST repository tools keys -type f | wc -l | tr -d '[:space:]') && " +
-    "recorded_files=$(wc -l < SHA256SUMS | tr -d '[:space:]') && " +
-    "test \"$expected_files\" = \"$recorded_files\" && " +
+    "expected_paths=$(find MANIFEST repository tools keys -type f | LC_ALL=C sort) && " +
+    "recorded_paths=$(cut -c67- SHA256SUMS | LC_ALL=C sort) && " +
+    "test \"$expected_paths\" = \"$recorded_paths\" && " +
     "sha256sum -c SHA256SUMS"
 end
 

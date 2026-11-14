@@ -78,6 +78,8 @@ describe GRML::Agent::PrepareAlpineBundle do
     commands[verify_packages].should_not contain("--allow-untrusted")
     commands[offline_install].should contain("--allow-untrusted")
     commands[offline_install].should contain("--no-network")
+    commands[checksum_audit].should contain("expected_paths=")
+    commands[checksum_audit].should contain("cut -c67- SHA256SUMS")
 
     progress.any? { |message| message.includes?("[14/14] Publishing the LATEST bundle pointer done") }.should be_true
   end

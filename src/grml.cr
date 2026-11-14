@@ -102,7 +102,7 @@ module GRML
           )
           run_bundle_command(
             "cd '#{tools}' && printf '%s  %s\\n' " +
-            "ccbf65f85cdc351851f8ad025bb3e65bae4d5b06 alpine-chroot-install | sha1sum -c -"
+            "a181c3b3ebc2d7eb7e44d0178dd4ba78a2c9d3ae136f9192317e0bf9262fac3b alpine-chroot-install | sha256sum -c -"
           )
         end
 
@@ -417,7 +417,7 @@ module GRML
         "repository_bytes=$(du -sb repository | cut -f1) && " +
         "printf 'format=4\\nrun_id=%s\\nalpine_branch=%s\\narchitecture=%s\\nrepositories=main,community\\nrequested_packages=alpine-base,alpine-keys\\nrepository=repository\\nrepository_architecture=%s\\nalpine_chroot_install_version=0.14.0\\napk_tools_version=2.14.7\\npackage_signature_verification=apk-verify\\npackage_signatures=verified\\nindex_signature=unsigned\\noffline_install=passed\\noffline_install_network=disabled\\npackage_count=%s\\nrepository_bytes=%s\\nchecksum_algorithm=sha256\\n' " +
         "'#{@run_id}' '#{branch}' '#{ARCHITECTURE}' '#{ARCHITECTURE}' \"$package_count\" \"$repository_bytes\" > MANIFEST && " +
-        "find MANIFEST repository tools keys -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS"
+        "find MANIFEST repository tools keys -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS"
     end
 
     # Audit the marker, manifest, repository contents, and every recorded checksum
@@ -430,6 +430,10 @@ module GRML
         "grep -Fqx 'run_id=#{@run_id}' MANIFEST && " +
         "grep -Fqx 'alpine_branch=#{branch}' MANIFEST && " +
         "grep -Fqx 'architecture=#{ARCHITECTURE}' MANIFEST && " +
+        "grep -Fqx 'repository=repository' MANIFEST && " +
+        "grep -Fqx 'repository_architecture=#{ARCHITECTURE}' MANIFEST && " +
+        "grep -Fqx 'alpine_chroot_install_version=0.14.0' MANIFEST && " +
+        "grep -Fqx 'apk_tools_version=2.14.7' MANIFEST && " +
         "grep -Fqx 'repositories=main,community' MANIFEST && " +
         "grep -Fqx 'requested_packages=alpine-base,alpine-keys' MANIFEST && " +
         "grep -Fqx 'package_signature_verification=apk-verify' MANIFEST && " +
@@ -445,9 +449,9 @@ module GRML
         "package_count=$(find repository/#{ARCHITECTURE} -maxdepth 1 -type f -name '*.apk' | wc -l | tr -d '[:space:]') && " +
         "test \"$package_count\" -gt 0 && grep -Fqx \"package_count=$package_count\" MANIFEST && " +
         "repository_bytes=$(du -sb repository | cut -f1) && grep -Fqx \"repository_bytes=$repository_bytes\" MANIFEST && " +
-        "expected_files=$(find MANIFEST repository tools keys -type f | wc -l | tr -d '[:space:]') && " +
-        "recorded_files=$(wc -l < SHA256SUMS | tr -d '[:space:]') && " +
-        "test \"$expected_files\" = \"$recorded_files\" && " +
+        "expected_paths=$(find MANIFEST repository tools keys -type f | LC_ALL=C sort) && " +
+        "recorded_paths=$(cut -c67- SHA256SUMS | LC_ALL=C sort) && " +
+        "test \"$expected_paths\" = \"$recorded_paths\" && " +
         "sha256sum -c SHA256SUMS"
     end
 

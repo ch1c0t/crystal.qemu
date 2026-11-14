@@ -42,7 +42,7 @@ def prepare_alpine_bundle(branch : String = "latest-stable", progress : Proc(Str
     )
     run_bundle_command(
       "cd '#{tools}' && printf '%s  %s\\n' " +
-      "ccbf65f85cdc351851f8ad025bb3e65bae4d5b06 alpine-chroot-install | sha1sum -c -"
+      "a181c3b3ebc2d7eb7e44d0178dd4ba78a2c9d3ae136f9192317e0bf9262fac3b alpine-chroot-install | sha256sum -c -"
     )
   end
 

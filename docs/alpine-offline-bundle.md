@@ -14,7 +14,7 @@ and hyphens before they are used in guest commands.
 The workflow uses the GRML guest as the build environment. It downloads two
 pinned tools:
 
-- alpine-chroot-install v0.14.0, checked against a pinned SHA-1 digest.
+- alpine-chroot-install v0.14.0, checked against a pinned SHA-256 digest.
 - apk.static v2.14.7 for x86_64, checked against a pinned SHA-256 digest.
 
 The Alpine public signing keys embedded in the pinned
@@ -32,7 +32,7 @@ The operation reports fourteen stages:
 
 1. Check that the GRML guest architecture is x86_64.
 2. Create a unique run directory and a RUNNING marker.
-3. Download alpine-chroot-install v0.14.0 and check its pinned SHA-1.
+3. Download alpine-chroot-install v0.14.0 and check its pinned SHA-256.
 4. Download apk.static v2.14.7, check its pinned SHA-256, and make it executable.
 5. Extract the Alpine public keys and install them into the temporary APK root.
 6. Fetch the recursive package dependency closure from main and community.
@@ -49,8 +49,8 @@ The operation reports fourteen stages:
     that both packages appear in the installed package database.
 11. Remove the temporary APK roots, write MANIFEST, and generate SHA256SUMS
     for the manifest, repository, tools, and public keys.
-12. Check the manifest fields, package count, repository size, expected
-    checksum-entry count, and every SHA-256 digest.
+12. Check the manifest fields, package count, repository size, exact expected
+    payload file list, and every SHA-256 digest.
 13. Atomically rename RUNNING to COMPLETE.
 14. Atomically replace LATEST with the relative path of this completed run.
 
