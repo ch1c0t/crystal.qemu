@@ -68,7 +68,7 @@ def write_manifest_command(branch : String) : String
     "repository_bytes=$(du -sb repository | cut -f1) && " +
     "printf 'format=4\\nrun_id=%s\\nalpine_branch=%s\\narchitecture=%s\\nrepositories=main,community\\nrequested_packages=alpine-base,alpine-keys\\nrepository=repository\\nrepository_architecture=%s\\nalpine_chroot_install_version=0.14.0\\napk_tools_version=2.14.7\\npackage_signature_verification=apk-verify\\npackage_signatures=verified\\nindex_signature=unsigned\\noffline_install=passed\\noffline_install_network=disabled\\npackage_count=%s\\nrepository_bytes=%s\\nchecksum_algorithm=sha256\\n' " +
     "'#{@run_id}' '#{branch}' '#{ARCHITECTURE}' '#{ARCHITECTURE}' \"$package_count\" \"$repository_bytes\" > MANIFEST && " +
-    "find MANIFEST repository tools keys -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS"
+    "find MANIFEST repository tools keys -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > SHA256SUMS"
 end
 
 # Audit the marker, manifest, repository contents, and every recorded checksum

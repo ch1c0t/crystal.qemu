@@ -76,10 +76,9 @@ COMPLETE marker, or the external LATEST pointer. Preserve a trusted copy of
 the checksum list or authenticate the bundle through a separate trusted
 channel when protection against malicious modification is required.
 
-The installer script's current pin is SHA-1 for compatibility with the
-existing preparation workflow; the static APK tool is pinned with SHA-256.
-The package signatures are checked with the embedded Alpine keys, and the
-final payload is checksummed with SHA-256.
+Both downloaded tools are pinned with SHA-256. Package signatures are
+checked with the embedded Alpine keys, and the final payload is checksummed
+with SHA-256.
 
 ## Artifact layout
 
