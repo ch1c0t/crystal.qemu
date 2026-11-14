@@ -30,7 +30,7 @@ def prepare_alpine_bundle(branch : String = "latest-stable", progress : Proc(Str
       "mkdir -p '#{run.runs_root}' && " +
       "mkdir '#{bundle}' && " +
       "mkdir -p '#{tools}' '#{keys}' '#{packages}' '#{apk_root}' && " +
-      "printf 'run_id=%s\\nstatus=running\\n' '#{run.run_id}' > '#{bundle}/RUNNING'"
+      "printf 'run_id=%s\\n\\n' '#{run.run_id}' > '#{bundle}/RUNNING'"
     )
   end
 
@@ -73,7 +73,7 @@ def prepare_alpine_bundle(branch : String = "latest-stable", progress : Proc(Str
   end
 
   report_bundle_stage(8, "Checking the local APK repository", progress) do
-    inspect_local_repository(bundle, repository, packages)
+    inspect_local_repository(bundle, repository, packages, progress)
   end
 
   report_bundle_stage(9, "Verifying offline installation", progress) do
@@ -160,7 +160,7 @@ private def build_local_repository(packages : String, tools : String, keys : Str
   )
 end
 
-private def inspect_local_repository(bundle : String, repository : String, packages : String) : Nil
+private def inspect_local_repository(bundle : String, repository : String, packages : String, progress : Proc(String, Nil)?) : Nil
   index = "#{packages}/APKINDEX.tar.gz"
   command = "set -eu; " +
     "if [ ! -d '#{packages}' ]; then " +
@@ -182,7 +182,7 @@ private def inspect_local_repository(bundle : String, repository : String, packa
     raise "Local APK repository preflight failed (exit=#{result.exit_code}):\n#{result.stderr}\n#{result.stdout}"
   end
 
-  report_bundle_progress(nil, result.stdout.strip)
+  report_bundle_progress(progress, result.stdout.strip)
 end
 
 private def verify_offline_repository(repository : String, bundle : String, tools : String, keys : String, arch : String) : Nil
@@ -200,8 +200,7 @@ private def write_bundle_manifest(bundle : String, branch : String, arch : Strin
     "printf 'format=3\\nrun_id=%s\\nalpine_branch=%s\\narchitecture=%s\\nrepository=repository\\nrepository_architecture=%s\\nindex_signature=unsigned\\ncompletion_marker=COMPLETE\\n' " +
     "'#{run_id}' '#{branch}' '#{arch}' '#{arch}' > MANIFEST && " +
     "find MANIFEST repository tools keys -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS && " +
-    "printf 'run_id=%s\\n' '#{run_id}' > COMPLETE && " +
-    "rm -f RUNNING"
+    "mv RUNNING COMPLETE"
   run_bundle_command(command)
 end
 

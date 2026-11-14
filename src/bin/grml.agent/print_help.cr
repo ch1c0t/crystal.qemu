@@ -22,11 +22,11 @@ REPL commands:
     Prepare an immutable Alpine offline bundle in
     /mnt/shared/alpine-bundles/runs/<run_id>. The default branch is
     latest-stable. Each invocation creates a new UTC timestamped run directory.
-    Previous runs are preserved. A failed run retains its files and RUNNING
-    marker, but has no COMPLETE marker and does not update LATEST.
+    Previous runs are preserved. An incomplete run retains its files and
+    RUNNING marker; it has no COMPLETE marker and does not update LATEST.
     After successful offline verification, MANIFEST and SHA256SUMS are written,
-    COMPLETE is created, and the LATEST file is atomically updated to contain
-    the relative path runs/<run_id>.
+    RUNNING is atomically renamed to COMPLETE, and LATEST is atomically updated
+    to contain the relative path runs/<run_id>.
 
 The repository root is repository/; APK files and APKINDEX.tar.gz are stored
 under repository/x86_64/. Offline verification passes the repository root to

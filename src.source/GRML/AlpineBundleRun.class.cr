@@ -40,15 +40,3 @@ def initialize(
   @host_latest_pointer = File.join(host_shared_directory, "alpine-bundles", "LATEST")
   @latest_pointer_contents = "runs/#{@run_id}"
 end
-
-def self.new_id(branch : String) : String
-  timestamp = Time.utc
-  nonce = Random.rand(0_i64..Int64::MAX)
-  timestamp_text = timestamp.to_s("%Y%m%dT%H%M%SZ")
-
-  unless branch =~ /\A[a-zA-Z0-9._-]+\z/
-    raise ArgumentError.new("Invalid Alpine branch: #{branch.inspect}")
-  end
-
-  "#{branch}-#{timestamp_text}-#{nonce.to_s(16)}"
-end
