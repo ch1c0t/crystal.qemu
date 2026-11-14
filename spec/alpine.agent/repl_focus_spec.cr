@@ -1,6 +1,6 @@
 require "spec"
-require "../src/logger"
-require "../src/alpine"
+require "../../src/logger"
+require "../../src/alpine"
 
 def with_alpine_repl_focus(value : String?, &block : -> T) : T forall T
   previous = ENV[Alpine::REPL::FOCUS_ENV]?

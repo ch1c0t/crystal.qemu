@@ -1,6 +1,6 @@
 require "spec"
-require "../src/logger"
-require "../src/grml"
+require "../../src/logger"
+require "../../src/grml"
 
 struct FakeGRMLOCRResult
   getter text : String
