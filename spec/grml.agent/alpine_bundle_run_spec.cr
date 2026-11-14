@@ -59,4 +59,18 @@ describe GRML::AlpineBundleRun do
       )
     end
   end
+  it "rewrites every indexed package architecture to match its repository directory" do
+    run = GRML::AlpineBundleRun.new(
+      "latest-stable",
+      "/shared",
+      Time.utc(2026, 11, 14, 12, 29, 0),
+      123_i64
+    )
+
+    command = run.repository_index_command
+    command.should contain("index --rewrite-arch x86_64")
+    command.should contain("#{run.packages_directory}/APKINDEX.tar.gz")
+    command.should contain("'#{run.packages_directory}'")
+  end
+
 end

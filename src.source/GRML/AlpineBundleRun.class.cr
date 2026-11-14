@@ -1,3 +1,5 @@
+ARCHITECTURE = "x86_64"
+
 getter run_id : String
 getter bundle_root : String
 getter runs_root : String
@@ -39,4 +41,11 @@ def initialize(
   @host_directory = File.join(host_shared_directory, "alpine-bundles", "runs", @run_id)
   @host_latest_pointer = File.join(host_shared_directory, "alpine-bundles", "LATEST")
   @latest_pointer_contents = "runs/#{@run_id}"
+end
+
+# APK's repository index must describe the architecture directory in which
+# all fetched archives are stored. This rewrites upstream noarch entries too.
+def repository_index_command : String
+  index = "#{@packages_directory}/APKINDEX.tar.gz"
+  "cd '#{@packages_directory}' && '#{@tools_directory}/apk.static' --keys-dir '#{@keys_directory}' index --rewrite-arch #{ARCHITECTURE} --output '#{index}' *.apk"
 end

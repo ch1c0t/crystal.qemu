@@ -10,7 +10,7 @@ def prepare_alpine_bundle(branch : String = "latest-stable", progress : Proc(Str
   packages = run.packages_directory
   tools = run.tools_directory
   keys = run.keys_directory
-  arch = "x86_64"
+  arch = GRML::AlpineBundleRun::ARCHITECTURE
   apk_root = run.apk_root
   mirror = "https://dl-cdn.alpinelinux.org/alpine"
   started_at = Time.monotonic
@@ -68,8 +68,8 @@ def prepare_alpine_bundle(branch : String = "latest-stable", progress : Proc(Str
     fetch_alpine_packages(packages, apk_root, tools, mirror, branch)
   end
 
-  report_bundle_stage(7, "Building the local APK repository index", progress) do
-    build_local_repository(packages, tools, keys)
+  report_bundle_stage(7, "Building the local APK repository index for x86_64", progress) do
+    run_bundle_command(run.repository_index_command)
   end
 
   report_bundle_stage(8, "Checking the local APK repository", progress) do
@@ -151,13 +151,6 @@ private def fetch_alpine_packages(packages : String, apk_root : String, tools : 
     "--repository #{mirror}/#{branch}/community " +
     "fetch --recursive --output '#{packages}' alpine-base alpine-keys"
   run_bundle_command(command)
-end
-
-private def build_local_repository(packages : String, tools : String, keys : String) : Nil
-  index = "#{packages}/APKINDEX.tar.gz"
-  run_bundle_command(
-    "cd '#{packages}' && '#{tools}/apk.static' --keys-dir '#{keys}' index --output '#{index}' *.apk"
-  )
 end
 
 private def inspect_local_repository(bundle : String, repository : String, packages : String, progress : Proc(String, Nil)?) : Nil
