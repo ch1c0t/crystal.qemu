@@ -67,8 +67,12 @@ def execute_streaming(
         command_exited = true
         result
       ensure
-        close_stream_file(socket, stdout_handle) if stdout_handle
-        close_stream_file(socket, stderr_handle) if stderr_handle
+        if handle = stdout_handle
+          close_stream_file(socket, handle)
+        end
+        if handle = stderr_handle
+          close_stream_file(socket, handle)
+        end
 
         # On timeout the guest process may still be running. Preserve its
         # output files so the caller can inspect them instead of unlinking
