@@ -41,6 +41,14 @@ jobs:
       - name: Generate sources and type-check the library
         run: bundle exec rake
 
+      - name: Upload generated library source for synchronization
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-qemu-source
+          path: src/qemu.cr
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Run Crystal specs
         env:
           LAVINMQ_AMQP_UNIXSOCKET: /tmp/unused-test-amqp.sock
