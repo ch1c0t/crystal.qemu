@@ -2,7 +2,7 @@ require "spec"
 require "../../src/qemu"
 
 class FakeGuestAgentStreamServer
-  @fiber : Fiber
+  @done = Channel(Nil).new
   getter requests = [] of JSON::Any
 
   def initialize(@path : String)
@@ -17,7 +17,7 @@ class FakeGuestAgentStreamServer
     @stderr_sent = false
     @exec_count = 0
 
-    @fiber = spawn do
+    spawn do
       socket = @server.accept
       begin
         while line = socket.gets
@@ -27,12 +27,13 @@ class FakeGuestAgentStreamServer
         end
       ensure
         socket.close
+        @done.send(nil)
       end
     end
   end
 
   def finish : Nil
-    @fiber.join
+    @done.receive
     @server.close
   end
 
