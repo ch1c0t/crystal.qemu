@@ -2,6 +2,7 @@ require "spec"
 require "../../src/qemu"
 
 class FakeGuestAgentStreamServer
+  @fiber : Fiber
   getter requests = [] of JSON::Any
 
   def initialize(@path : String)
