@@ -1,5 +1,5 @@
 require "spec"
-require "../src/qemu"
+require "../../src/qemu"
 
 class FakeGuestAgentStreamServer
   getter requests = [] of JSON::Any
