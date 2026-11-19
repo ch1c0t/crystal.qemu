@@ -532,40 +532,21 @@ module QEMU
           cmd_parts.join(" ")
         end
       end
-
+    
       module DiskOptions
         def disk_options : Array(String)
           return [] of String unless Dir.exists?("./disks")
           Dir.glob("./disks/*").sort.each_with_index.flat_map do |path, index|
             next [] of String unless File.file?(path)
             backend = "grml_startup_disk_#{index}"
-            serial = File.basename(path).sub(/\\.[^.]+\\z/, "")
+            serial = File.basename(path).sub(/\.[^.]+\z/, "")
             device = "virtio-blk-pci,drive=#{backend}"
-            device += ",serial=#{serial}" if serial.matches?(/\\A[A-Za-z0-9._-]{1,20}\\z/)
+            device += ",serial=#{serial}" if serial.matches?(/\A[A-Za-z0-9._-]{1,20}\z/)
             ["-drive", "if=none,id=#{backend},file=#{File.expand_path(path)}", "-device", device]
           end.to_a
         end
       end
-
-      module ISOBootOptions
-        def iso_boot_options : Array(String)
-          if iso_path = @iso_path
-            ["-cdrom", iso_path, "-boot", "order=d"]
-          else
-            ["-boot", "order=c"]
-          end
-        end
-      end
-
-      module SharedPathOptions
-        def shared_path_options
-          [
-            "-fsdev", "local,security_model=mapped,id=shared0,path=#{@shared_path}",
-            "-device", "virtio-9p-pci,fsdev=shared0,mount_tag=shared0",
-          ]
-        end
-      end
-
+    
       module GuestAgentOptions
         def guest_agent_options
           [
@@ -575,21 +556,44 @@ module QEMU
           ]
         end
       end
-
+    
+      module ISOBootOptions
+        def iso_boot_options : Array(String)
+          if iso_path = @iso_path
+            ["-cdrom", iso_path, "-boot", "order=d"]
+          else
+            ["-boot", "order=c"]
+          end
+        end
+      end
+    
+      module SharedPathOptions
+        def shared_path_options
+          [
+            "-fsdev", "local,security_model=mapped,id=shared0,path=#{@shared_path}",
+            "-device", "virtio-9p-pci,fsdev=shared0,mount_tag=shared0",
+          ]
+        end
+      end
+    
       include BuildQEMUCommand
       include DiskOptions
       include GuestAgentOptions
       include ISOBootOptions
       include SharedPathOptions
-
+      
       def start : Bool
         return false if @display
+      
         verify_shared_directory
+      
         File.delete(@monitor_path) if File.exists?(@monitor_path)
         File.delete(@guest_agent_path) if File.exists?(@guest_agent_path)
+      
         qemu_cmd = build_qemu_command
         stdout_buffer = IO::Memory.new
         result = Process.run("xephyr-run", [qemu_cmd], shell: false, output: stdout_buffer)
+      
         if result.success?
           @display = stdout_buffer.to_s.strip
           true
@@ -598,7 +602,7 @@ module QEMU
         end
       end
     end
-
+  
     module Terminate
       def terminate : Bool
         if target_display = @display
