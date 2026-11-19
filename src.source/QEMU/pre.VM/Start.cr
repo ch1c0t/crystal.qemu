@@ -1,4 +1,8 @@
 include BuildQEMUCommand
+include DiskOptions
+include GuestAgentOptions
+include ISOBootOptions
+include SharedPathOptions
 
 def start : Bool
   return false if @display
